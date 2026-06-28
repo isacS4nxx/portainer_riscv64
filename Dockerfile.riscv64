@@ -4,10 +4,10 @@ FROM --platform=linux/amd64 node:18-alpine AS frontend-builder
 RUN npm install -g pnpm
 
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --network-timeout 300000
 
+# Copia tudo de uma vez, sem depender do lock separado
 COPY . .
+RUN pnpm install --network-timeout 300000
 RUN pnpm build
 
 # Stage 2: Backend Go (cross-compile para riscv64)
