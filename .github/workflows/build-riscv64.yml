@@ -1,7 +1,7 @@
 name: Build Portainer riscv64
 
 on:
-  workflow_dispatch:        # Permite rodar manualmente com 1 clique
+  workflow_dispatch:
   push:
     branches: [develop]
     paths:
@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120     # Build pode demorar ~40-60min
+    timeout-minutes: 120
 
     steps:
       - name: Checkout
@@ -43,7 +43,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-          - name: Atualizar Docker Hub README
+      - name: Atualizar Docker Hub README
         uses: peter-evans/dockerhub-description@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
