@@ -3,3 +3,13 @@
 !build
 !metadata.json
 !docker-extension/build
+
+# Exceções para o build riscv64
+!package.json
+!pnpm-lock.yaml
+!app/
+!api/
+!go.mod
+!go.sum
+!cmd/
+!vendor/
