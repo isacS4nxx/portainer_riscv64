@@ -42,3 +42,11 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/portainer-riscv64:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+          - name: Atualizar Docker Hub README
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: isacndevops/portainer-riscv64
+          readme-filepath: ./DOCKERHUB_README.md
