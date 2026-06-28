@@ -26,7 +26,7 @@ LABEL maintainer="isacndevops"
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /
 COPY --from=backend-builder /app/portainer /portainer
-COPY --from=frontend-builder /app/dist /public
+COPY --from=frontend-builder /app/dist/public /public
 VOLUME ["/data"]
 EXPOSE 9000 9443 8000
 ENTRYPOINT ["/portainer"]
