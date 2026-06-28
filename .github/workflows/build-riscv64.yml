@@ -3,7 +3,7 @@ name: Build Portainer riscv64
 on:
   workflow_dispatch:        # Permite rodar manualmente com 1 clique
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - 'Dockerfile.riscv64'
       - '.github/workflows/build-riscv64.yml'
