@@ -18,7 +18,7 @@ ENV GOOS=linux \
 RUN go build \
     -ldflags="-s -w" \
     -o portainer \
-    ./cmd/portainer/
+    ./api/cmd/portainer/
 
 # Stage 3: Imagem final riscv64
 FROM --platform=linux/riscv64 alpine:3.20
