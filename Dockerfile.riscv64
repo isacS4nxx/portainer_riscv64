@@ -1,21 +1,30 @@
 # Stage 1: Frontend (sempre em amd64)
 FROM --platform=linux/amd64 node:18-alpine AS frontend-builder
+
+RUN npm install -g pnpm
+
 WORKDIR /app
-COPY package.json ./
-RUN yarn install --frozen-lockfile --network-timeout 300000
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --network-timeout 300000
+
 COPY . .
-RUN yarn build:prod
+RUN pnpm build
 
 # Stage 2: Backend Go (cross-compile para riscv64)
-FROM --platform=linux/amd64 golang:1.21-alpine AS backend-builder
+FROM --platform=linux/amd64 golang:1.26-alpine AS backend-builder
+
 RUN apk add --no-cache git gcc musl-dev
+
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
+
 COPY . .
+
 ENV GOOS=linux \
     GOARCH=riscv64 \
     CGO_ENABLED=0
+
 RUN go build \
     -ldflags="-s -w" \
     -o portainer \
@@ -23,11 +32,17 @@ RUN go build \
 
 # Stage 3: Imagem final riscv64
 FROM --platform=linux/riscv64 alpine:3.20
-LABEL maintainer="SEU_NOME <seu@email.com>"
+
+LABEL maintainer="isacndevops"
+
 RUN apk add --no-cache ca-certificates tzdata
+
 WORKDIR /
+
 COPY --from=backend-builder /app/portainer /portainer
 COPY --from=frontend-builder /app/dist /public
+
 VOLUME ["/data"]
 EXPOSE 9000 9443 8000
+
 ENTRYPOINT ["/portainer"]
