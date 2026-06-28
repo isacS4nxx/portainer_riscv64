@@ -22,7 +22,7 @@ RUN go build \
     ./cmd/portainer/
 
 # Stage 3: Imagem final riscv64
-FROM --platform=linux/riscv64 alpine:3.19
+FROM --platform=linux/riscv64 alpine:3.20
 LABEL maintainer="SEU_NOME <seu@email.com>"
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /
