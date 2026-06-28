@@ -1,7 +1,7 @@
 # Stage 1: Frontend (sempre em amd64)
 FROM --platform=linux/amd64 node:18-alpine AS frontend-builder
 WORKDIR /app
-COPY package.json yarn.lock ./
+COPY package.json ./
 RUN yarn install --frozen-lockfile --network-timeout 300000
 COPY . .
 RUN yarn build:prod
