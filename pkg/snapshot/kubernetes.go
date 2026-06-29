@@ -22,14 +22,14 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func CreateKubernetesSnapshot(cli *kubernetes.Clientset, gpuOperator bool) (*portainer.KubernetesSnapshot, error) {
+func CreateKubernetesSnapshot(cli *kubernetes.Clientset) (*portainer.KubernetesSnapshot, error) {
 	kubernetesSnapshot := &portainer.KubernetesSnapshot{}
 	err := kubernetesSnapshotVersion(kubernetesSnapshot, cli)
 	if err != nil {
 		log.Warn().Err(err).Msg("unable to snapshot cluster version")
 	}
 
-	err = kubernetesSnapshotNodes(kubernetesSnapshot, cli, gpuOperator)
+	err = kubernetesSnapshotNodes(kubernetesSnapshot, cli)
 	if err != nil {
 		log.Warn().Err(err).Msg("unable to snapshot cluster nodes")
 	}
@@ -48,7 +48,7 @@ func kubernetesSnapshotVersion(snapshot *portainer.KubernetesSnapshot, cli kuber
 	return nil
 }
 
-func kubernetesSnapshotNodes(snapshot *portainer.KubernetesSnapshot, cli kubernetes.Interface, gpuOperator bool) error {
+func kubernetesSnapshotNodes(snapshot *portainer.KubernetesSnapshot, cli kubernetes.Interface) error {
 	nodeList, err := cli.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
@@ -66,17 +66,15 @@ func kubernetesSnapshotNodes(snapshot *portainer.KubernetesSnapshot, cli kuberne
 		totalCPUs += node.Status.Capacity.Cpu().Value()
 		totalMemory += node.Status.Capacity.Memory().Value()
 
-		if gpuOperator {
-			nodeHasGPU := false
-			for resourceName, quantity := range node.Status.Capacity {
-				if strings.HasPrefix(string(resourceName), "nvidia.com/") {
-					totalGPU[string(resourceName)] += quantity.Value()
-					nodeHasGPU = true
-				}
+		nodeHasGPU := false
+		for resourceName, quantity := range node.Status.Capacity {
+			if strings.HasPrefix(string(resourceName), "nvidia.com/") {
+				totalGPU[string(resourceName)] += quantity.Value()
+				nodeHasGPU = true
 			}
-			if nodeHasGPU {
-				gpuNodeCount++
-			}
+		}
+		if nodeHasGPU {
+			gpuNodeCount++
 		}
 	}
 
@@ -84,12 +82,9 @@ func kubernetesSnapshotNodes(snapshot *portainer.KubernetesSnapshot, cli kuberne
 	snapshot.TotalMemory = totalMemory
 	snapshot.NodeCount = len(nodeList.Items)
 	snapshot.ClusterType = clusterTypeFromProviderID(nodeList.Items[0].Spec.ProviderID)
-
-	if gpuOperator {
-		snapshot.GPUNodeCount = gpuNodeCount
-		if len(totalGPU) > 0 {
-			snapshot.TotalGPU = totalGPU
-		}
+	snapshot.GPUNodeCount = gpuNodeCount
+	if len(totalGPU) > 0 {
+		snapshot.TotalGPU = totalGPU
 	}
 
 	return nil

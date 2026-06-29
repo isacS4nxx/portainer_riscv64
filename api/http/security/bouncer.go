@@ -500,21 +500,11 @@ func extractKeyFromCookie(r *http.Request) (string, error) {
 	return cookie.Value, nil
 }
 
-// extractAPIKey extracts the api key from the api key request header or query params.
+// extractAPIKey extracts the api key from the X-API-KEY request header.
 func extractAPIKey(r *http.Request) (string, bool) {
-	// extract the API key from the request header
 	apiKey := r.Header.Get(apiKeyHeader)
 	if apiKey != "" {
 		return apiKey, true
-	}
-
-	// extract the API key from query params.
-	// Case-insensitive check for the "X-API-KEY" query param.
-	query := r.URL.Query()
-	for k, v := range query {
-		if strings.EqualFold(k, apiKeyHeader) {
-			return v[0], true
-		}
 	}
 
 	return "", false

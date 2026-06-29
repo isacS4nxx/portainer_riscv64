@@ -24,5 +24,5 @@ func (snapshotter *Snapshotter) CreateSnapshot(endpoint *portainer.Endpoint) (*p
 		return nil, err
 	}
 
-	return snapshot.CreateKubernetesSnapshot(client, endpoint.Kubernetes.Flags.GPUOperator)
+	return snapshot.CreateKubernetesSnapshot(client)
 }
