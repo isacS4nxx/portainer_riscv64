@@ -20,7 +20,7 @@ func TestSourceDelete_Success(t *testing.T) {
 
 	var srcID portainer.SourceID
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "to-delete", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "to-delete", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID
@@ -58,7 +58,7 @@ func TestSourceDelete_InUse(t *testing.T) {
 
 	var srcID portainer.SourceID
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "in-use", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "in-use", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID
@@ -100,7 +100,7 @@ func TestSourceDelete_InUseByCustomTemplate(t *testing.T) {
 
 	var srcID portainer.SourceID
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "in-use-by-template", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "in-use-by-template", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID

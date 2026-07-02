@@ -117,7 +117,7 @@ func (h *Handler) gitSourceTest(w http.ResponseWriter, r *http.Request) *httperr
 }
 
 // testSourceConnection verifies that a git repository is reachable with the given config.
-func testSourceConnection(ctx context.Context, gitService portainer.GitService, config *gittypes.RepoConfig) ConnectionTestResult {
+func testSourceConnection(ctx context.Context, gitService portainer.GitService, config *gittypes.GitSource) ConnectionTestResult {
 	var username, password string
 	if config.Authentication != nil {
 		username = config.Authentication.Username

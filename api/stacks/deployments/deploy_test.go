@@ -203,10 +203,8 @@ func Test_redeployWhenChanged_DoesNothingWhenNoGitChanges(t *testing.T) {
 
 	src := &portainer.Source{
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
-			URL:           "url",
-			ReferenceName: "ref",
-			ConfigHash:    "oldHash",
+		Git: &gittypes.GitSource{
+			URL: "url",
 		},
 	}
 	err = store.Source().Create(adminUserContext, src)
@@ -250,10 +248,8 @@ func Test_redeployWhenChanged_FailsWhenCannotClone(t *testing.T) {
 
 	src := &portainer.Source{
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
-			URL:           "url",
-			ReferenceName: "ref",
-			ConfigHash:    "oldHash",
+		Git: &gittypes.GitSource{
+			URL: "url",
 		},
 	}
 	err = store.Source().Create(adminUserContext, src)
@@ -293,10 +289,8 @@ func setupRedeployStore(t *testing.T, stackType portainer.StackType) (dataservic
 
 	src := &portainer.Source{
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
-			URL:           "url",
-			ReferenceName: "ref",
-			ConfigHash:    "oldHash",
+		Git: &gittypes.GitSource{
+			URL: "url",
 		},
 	}
 	err = store.Source().Create(adminUserContext, src)

@@ -20,7 +20,7 @@ func TestGitSourceUpdate_Success(t *testing.T) {
 
 	var srcID portainer.SourceID
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "old-name", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "old-name", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID
@@ -58,7 +58,7 @@ func TestGitSourceUpdate_PreservesAuthWhenNotProvided(t *testing.T) {
 		src := &portainer.Source{
 			Name: "auth-source",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/org/repo.git",
 				Authentication: &gittypes.GitAuthentication{
 					Username: "alice",
@@ -107,7 +107,7 @@ func TestGitSourceUpdate_ClearsAuthWhenRequested(t *testing.T) {
 		src := &portainer.Source{
 			Name: "auth-source",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/org/repo.git",
 				Authentication: &gittypes.GitAuthentication{
 					Username: "alice",
@@ -154,7 +154,7 @@ func TestGitSourceUpdate_ReplacesAuthWhenProvided(t *testing.T) {
 		src := &portainer.Source{
 			Name: "auth-source",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/org/repo.git",
 				Authentication: &gittypes.GitAuthentication{
 					Username: "alice",
@@ -225,14 +225,14 @@ func TestGitSourceUpdate_ConflictOnDuplicateURL(t *testing.T) {
 		existing := &portainer.Source{
 			Name: "existing",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/org/existing.git",
 			},
 		}
 		err := tx.Source().Create(adminUserContext, existing)
 		require.NoError(t, err)
 
-		src := &portainer.Source{Name: "other", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "other", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err = tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID
@@ -259,7 +259,7 @@ func TestGitSourceUpdate_MalformedJSON(t *testing.T) {
 
 	var srcID portainer.SourceID
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "src", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "src", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)
 		srcID = src.ID
@@ -284,7 +284,7 @@ func TestGitSourceUpdate_ConflictWhenAuthChangesMatchAnotherSource(t *testing.T)
 		existing := &portainer.Source{
 			Name: "existing",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/org/repo.git",
 				Authentication: &gittypes.GitAuthentication{
 					Username: "alice",
@@ -299,7 +299,7 @@ func TestGitSourceUpdate_ConflictWhenAuthChangesMatchAnotherSource(t *testing.T)
 		other := &portainer.Source{
 			Name: "other",
 			Type: portainer.SourceTypeGit,
-			Git:  &gittypes.RepoConfig{URL: "https://github.com/org/repo.git"},
+			Git:  &gittypes.GitSource{URL: "https://github.com/org/repo.git"},
 		}
 		if err := tx.Source().Create(adminUserContext, other); err != nil {
 			return err

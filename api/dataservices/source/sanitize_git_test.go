@@ -50,19 +50,19 @@ func Test_SanitizeAccesses_Admin(t *testing.T) {
 
 	test(nil, nil, errInvalidSource)
 	test(&portainer.Source{}, nil, noError)
-	test(&portainer.Source{Git: &gittypes.RepoConfig{}}, nil,
+	test(&portainer.Source{Git: &gittypes.GitSource{}}, nil,
 		noError, emptyUsers, emptyTeams, adminOnly(true), noOwner, public(false),
 	)
-	test(&portainer.Source{Git: &gittypes.RepoConfig{}, Public: true}, nil,
+	test(&portainer.Source{Git: &gittypes.GitSource{}, Public: true}, nil,
 		noError, emptyUsers, emptyTeams, adminOnly(false), noOwner, public(true),
 	)
-	test(&portainer.Source{Git: &gittypes.RepoConfig{}, AdministratorsOnly: true}, nil,
+	test(&portainer.Source{Git: &gittypes.GitSource{}, AdministratorsOnly: true}, nil,
 		noError, emptyUsers, emptyTeams, adminOnly(true), noOwner, public(false),
 	)
-	test(&portainer.Source{Git: &gittypes.RepoConfig{}, AdministratorsOnly: true, Public: true}, nil,
+	test(&portainer.Source{Git: &gittypes.GitSource{}, AdministratorsOnly: true, Public: true}, nil,
 		noError, emptyUsers, emptyTeams, adminOnly(true), noOwner, public(false),
 	)
-	test(&portainer.Source{Git: &gittypes.RepoConfig{}, AdministratorsOnly: true, Public: true, UserAccesses: []portainer.UserID{1, 2}}, nil,
+	test(&portainer.Source{Git: &gittypes.GitSource{}, AdministratorsOnly: true, Public: true, UserAccesses: []portainer.UserID{1, 2}}, nil,
 		noError, emptyUsers, emptyTeams, adminOnly(true), noOwner, public(false),
 	)
 }

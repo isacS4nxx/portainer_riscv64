@@ -184,7 +184,7 @@ func (service ServiceTx) FindOrCreateGitSource(context UserContext, src *portain
 	toCreate := &portainer.Source{
 		Name: src.Name,
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
+		Git: &gittypes.GitSource{
 			URL:            src.Git.URL,
 			Authentication: src.Git.Authentication,
 			TLSSkipVerify:  src.Git.TLSSkipVerify,

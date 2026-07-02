@@ -340,7 +340,7 @@ func (handler *Handler) createCustomTemplateFromGitRepository(r *http.Request) (
 		src, err := workflows.FindOrCreateGitSource(handler.DataStore, userContext, &portainer.Source{
 			Name: gittypes.RepoName(gitConfig.URL),
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL:            gitConfig.URL,
 				Authentication: gitConfig.Authentication,
 				TLSSkipVerify:  gitConfig.TLSSkipVerify,

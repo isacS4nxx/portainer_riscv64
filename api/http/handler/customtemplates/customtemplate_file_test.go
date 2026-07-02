@@ -151,7 +151,7 @@ func TestCustomTemplateFile_GitTemplate(t *testing.T) {
 	require.NoError(t, ds.UpdateTx(func(tx dataservices.DataStoreTx) error {
 		src := &portainer.Source{
 			Type: portainer.SourceTypeGit,
-			Git:  &gittypes.RepoConfig{URL: "https://github.com/example/repo"},
+			Git:  &gittypes.GitSource{URL: "https://github.com/example/repo"},
 		}
 		err := tx.Source().Create(adminUserContext, src)
 		require.NoError(t, err)

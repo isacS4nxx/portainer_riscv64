@@ -35,6 +35,42 @@ type RepoConfig struct {
 	TLSSkipVerify bool `example:"false"`
 }
 
+// GitSource holds the shared connection fields stored on a Source.
+// Per-file fields (ref, path, hash) are stored on ArtifactFile instead.
+type GitSource struct {
+	URL            string             `example:"https://github.com/portainer/portainer.git"`
+	Authentication *GitAuthentication `json:",omitempty"`
+	TLSSkipVerify  bool               `example:"false"`
+}
+
+// ToRepoConfig returns a RepoConfig populated with the connection fields from gc
+func (gc *GitSource) ToRepoConfig() *RepoConfig {
+	return &RepoConfig{
+		URL:            gc.URL,
+		Authentication: gc.Authentication,
+		TLSSkipVerify:  gc.TLSSkipVerify,
+	}
+}
+
+// SanitizeGitSource returns a copy of gc with the URL sanitized and password cleared,
+// safe to return to clients
+func SanitizeGitSource(gc *GitSource) *GitSource {
+	if gc == nil {
+		return nil
+	}
+
+	result := *gc
+	result.URL = SanitizeURL(result.URL)
+
+	if result.Authentication != nil && result.Authentication.Password != "" {
+		auth := *result.Authentication
+		auth.Password = ""
+		result.Authentication = &auth
+	}
+
+	return &result
+}
+
 // RepoName extracts the repository name from a git URL for use as a display name.
 // e.g. "https://github.com/org/app-config.git" results in "app-config"
 func RepoName(rawURL string) string {

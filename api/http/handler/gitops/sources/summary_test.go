@@ -42,7 +42,7 @@ func TestSourcesSummary_CountsByStatus(t *testing.T) {
 
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
 		for idx, name := range []string{"source-a", "source-b", "source-c"} {
-			err := tx.Source().Create(adminUserContext, &portainer.Source{Name: name, Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: fmt.Sprintf("http://github.com/org/repo%d", idx)}})
+			err := tx.Source().Create(adminUserContext, &portainer.Source{Name: name, Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: fmt.Sprintf("http://github.com/org/repo%d", idx)}})
 			require.NoError(t, err)
 		}
 

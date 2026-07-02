@@ -33,11 +33,9 @@ func TestGetSource_ReturnsDetail(t *testing.T) {
 	t.Parallel()
 	_, store := datastore.MustNewTestStore(t, false, true)
 
-	cfg := &gittypes.RepoConfig{
-		URL:            "https://github.com/org/repo",
-		ReferenceName:  "refs/heads/main",
-		ConfigFilePath: "docker-compose.yml",
-		TLSSkipVerify:  true,
+	cfg := &gittypes.GitSource{
+		URL:           "https://github.com/org/repo",
+		TLSSkipVerify: true,
 	}
 
 	var srcID portainer.SourceID
@@ -56,7 +54,6 @@ func TestGetSource_ReturnsDetail(t *testing.T) {
 	assert.Equal(t, srcID, detail.ID)
 	assert.Equal(t, "repo", detail.Name)
 	assert.Equal(t, 1, detail.UsedBy)
-	assert.Equal(t, "docker-compose.yml", detail.Connection.ConfigFilePath)
 	assert.True(t, detail.Connection.TLSSkipVerify)
 	require.Len(t, detail.Workflows, 1)
 	assert.Equal(t, "my-stack", detail.Workflows[0].Name)
@@ -66,7 +63,7 @@ func TestGetSource_RedactsCredentials(t *testing.T) {
 	t.Parallel()
 	_, store := datastore.MustNewTestStore(t, false, true)
 
-	cfg := &gittypes.RepoConfig{
+	cfg := &gittypes.GitSource{
 		URL:            "https://github.com/org/secure",
 		Authentication: &gittypes.GitAuthentication{Username: "user", Password: "s3cr3t"},
 	}

@@ -12,7 +12,7 @@ func (h *Handler) buildSource(ctx context.Context, src *portainer.Source, stats 
 	var status ce.Status
 	var sourceErr string
 	if src.Git != nil {
-		phase, _ := ce.ComputeGitPhasesForConfig(ctx, h.gitService, src.Git)
+		phase, _ := ce.ComputeGitPhasesForConfig(ctx, h.gitService, src.Git.ToRepoConfig())
 		status = phase.Status
 		sourceErr = phase.Error
 	} else {

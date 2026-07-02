@@ -1321,13 +1321,13 @@ type (
 
 	// Source represents a GitOps source that can be referenced by stacks or deployments.
 	Source struct {
-		ID       SourceID             `json:"id" example:"1"`
-		Name     string               `json:"name" example:"my-source"`
-		LastSync int64                `json:"lastSync,omitempty" example:"1587399600"`
-		Type     SourceType           `json:"type" example:"1"`
-		Git      *gittypes.RepoConfig `json:"git,omitempty"`
-		Registry *Registry            `json:"registry,omitempty"`
-		Helm     *HelmConfig          `json:"helm,omitempty"`
+		ID       SourceID            `json:"id" example:"1"`
+		Name     string              `json:"name" example:"my-source"`
+		LastSync int64               `json:"lastSync,omitempty" example:"1587399600"`
+		Type     SourceType          `json:"type" example:"1"`
+		Git      *gittypes.GitSource `json:"git,omitempty"`
+		Registry *Registry           `json:"registry,omitempty"`
+		Helm     *HelmConfig         `json:"helm,omitempty"`
 
 		Public             bool     `json:"public"`
 		AdministratorsOnly bool     `json:"administratorsOnly"`
@@ -2670,6 +2670,7 @@ const (
 	ChangeConfirmation PolicyType = "change-confirmation"
 	CleanupDocker      PolicyType = "cleanup-docker"
 	ObservabilityK8s   PolicyType = "observability-k8s"
+	NetworkSecurityK8s PolicyType = "network-security-k8s"
 )
 
 type HelmInstallStatus string

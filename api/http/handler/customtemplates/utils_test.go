@@ -58,7 +58,7 @@ func TestPopulateGitConfig_PopulatesFromSourceAndArtifact(t *testing.T) {
 	err := store.UpdateTx(func(tx dataservices.DataStoreTx) error {
 		src := &portainer.Source{
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL:           "https://github.com/example/repo",
 				TLSSkipVerify: true,
 			},
@@ -106,7 +106,7 @@ func TestPopulateGitConfig_StripsPassword(t *testing.T) {
 	err := store.UpdateTx(func(tx dataservices.DataStoreTx) error {
 		src := &portainer.Source{
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/example/repo",
 				Authentication: &gittypes.GitAuthentication{
 					Username: "user",

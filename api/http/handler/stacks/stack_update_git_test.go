@@ -39,7 +39,7 @@ func TestStackUpdateGitWebhookUniqueness(t *testing.T) {
 
 	sharedSrc := &portainer.Source{
 		Type: portainer.SourceTypeGit,
-		Git:  &gittypes.RepoConfig{URL: "https://github.com/portainer/portainer.git"},
+		Git:  &gittypes.GitSource{URL: "https://github.com/portainer/portainer.git"},
 	}
 	err = store.Source().Create(source.InsecureNewAdminContext(), sharedSrc)
 	require.NoError(t, err)

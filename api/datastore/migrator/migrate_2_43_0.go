@@ -116,7 +116,7 @@ func (m *Migrator) migrateGitConfigToSources_2_43_0() error {
 	sourcesByKey := make(map[sourceDedupeKey]portainer.SourceID, len(existingSources))
 	for _, src := range existingSources {
 		if src.Git != nil {
-			sourcesByKey[gitSourceKey(src.Git)] = src.ID
+			sourcesByKey[gitSourceKey(&gittypes.RepoConfig{URL: src.Git.URL, Authentication: src.Git.Authentication})] = src.ID
 		}
 	}
 
@@ -163,9 +163,13 @@ func (m *Migrator) migrateGitConfigToSources_2_43_0() error {
 
 			if !exists {
 				src := &portainer.Source{
-					Name:               gittypes.RepoName(cfg.URL),
-					Type:               portainer.SourceTypeGit,
-					Git:                cfg,
+					Name: gittypes.RepoName(cfg.URL),
+					Type: portainer.SourceTypeGit,
+					Git: &gittypes.GitSource{
+						URL:            cfg.URL,
+						Authentication: cfg.Authentication,
+						TLSSkipVerify:  cfg.TLSSkipVerify,
+					},
 					OwnerID:            ownerId,
 					Public:             public,
 					AdministratorsOnly: adminOnly,
@@ -240,7 +244,7 @@ func (m *Migrator) migrateCustomTemplateGitConfigToSources_2_43_0() error {
 	sourcesByKey := make(map[sourceDedupeKey]portainer.SourceID, len(existingSources))
 	for _, src := range existingSources {
 		if src.Git != nil {
-			sourcesByKey[gitSourceKey(src.Git)] = src.ID
+			sourcesByKey[gitSourceKey(&gittypes.RepoConfig{URL: src.Git.URL, Authentication: src.Git.Authentication})] = src.ID
 		}
 	}
 
@@ -250,13 +254,13 @@ func (m *Migrator) migrateCustomTemplateGitConfigToSources_2_43_0() error {
 			continue
 		}
 
-		cfg := &gittypes.RepoConfig{
+		cfg := &gittypes.GitSource{
 			URL:            gittypes.SanitizeURL(t.GitConfig.URL),
 			Authentication: t.GitConfig.Authentication,
 			TLSSkipVerify:  t.GitConfig.TLSSkipVerify,
 		}
 
-		key := gitSourceKey(cfg)
+		key := gitSourceKey(&gittypes.RepoConfig{URL: cfg.URL, Authentication: cfg.Authentication})
 
 		var newSrcID portainer.SourceID
 

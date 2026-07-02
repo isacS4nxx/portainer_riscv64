@@ -20,11 +20,10 @@ var (
 	ErrNotGitSource = errors.New("source is not a Git source")
 )
 
-// GitSourceUpdatePayload holds the parameters for creating a git-backed source
+// GitSourceUpdatePayload holds the parameters for updating a git-backed source
 type GitSourceUpdatePayload struct {
 	Name           *string                         `json:"name"`
 	URL            *string                         `json:"url"`
-	ReferenceName  *string                         `json:"referenceName"`
 	TLSSkipVerify  *bool                           `json:"tlsSkipVerify"`
 	Authentication *GitAuthenticationUpdatePayload `json:"authentication"`
 }
@@ -107,7 +106,9 @@ func (h *Handler) gitSourceUpdate(w http.ResponseWriter, r *http.Request) *httpe
 		return httperror.InternalServerError("Unable to update source", err)
 	}
 
-	src.Git = gittypes.SanitizeRepoConfig(src.Git)
+	h.invalidateCache()
+
+	src.Git = gittypes.SanitizeGitSource(src.Git)
 
 	return response.JSON(w, src)
 }
@@ -144,15 +145,11 @@ func ApplyBaseGitSourceChanges(src *portainer.Source, payload GitSourceUpdatePay
 	}
 
 	if src.Git == nil {
-		src.Git = &gittypes.RepoConfig{}
+		src.Git = &gittypes.GitSource{}
 	}
 
 	if payload.URL != nil {
 		src.Git.URL = *payload.URL
-	}
-
-	if payload.ReferenceName != nil {
-		src.Git.ReferenceName = *payload.ReferenceName
 	}
 
 	if payload.TLSSkipVerify != nil {

@@ -27,7 +27,7 @@ func mustCreateGitWorkflow(t *testing.T, tx dataservices.DataStoreTx, stack *por
 
 	cfg := stack.GitConfig
 
-	src := &portainer.Source{Type: portainer.SourceTypeGit, Git: cfg}
+	src := &portainer.Source{Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: cfg.URL, Authentication: cfg.Authentication, TLSSkipVerify: cfg.TLSSkipVerify}}
 	require.NoError(t, tx.Source().Create(adminUserContext, src))
 
 	wf := &portainer.Workflow{Artifacts: []portainer.Artifact{{
@@ -203,8 +203,8 @@ func TestFetchSourceStats_ReturnsAllSources(t *testing.T) {
 	_, store := datastore.MustNewTestStore(t, false, true)
 
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		require.NoError(t, tx.Source().Create(adminUserContext, &portainer.Source{Name: "source-1", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo1"}}))
-		require.NoError(t, tx.Source().Create(adminUserContext, &portainer.Source{Name: "source-2", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo2"}}))
+		require.NoError(t, tx.Source().Create(adminUserContext, &portainer.Source{Name: "source-1", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo1"}}))
+		require.NoError(t, tx.Source().Create(adminUserContext, &portainer.Source{Name: "source-2", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo2"}}))
 
 		return tx.User().Create(&portainer.User{ID: 1, Role: portainer.AdministratorRole})
 	}))
@@ -227,7 +227,7 @@ func TestFetchSourceStats_TracksWorkflowCountAndEndpoints(t *testing.T) {
 	var srcID portainer.SourceID
 
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "shared", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "shared", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		require.NoError(t, tx.Source().Create(adminUserContext, src))
 		srcID = src.ID
 
@@ -265,7 +265,7 @@ func TestFetchSourceStats_UnusedSourceHasZeroStats(t *testing.T) {
 	var unusedID portainer.SourceID
 
 	require.NoError(t, store.UpdateTx(func(tx dataservices.DataStoreTx) error {
-		src := &portainer.Source{Name: "unused", Type: portainer.SourceTypeGit, Git: &gittypes.RepoConfig{URL: "http://github.com/org/repo"}}
+		src := &portainer.Source{Name: "unused", Type: portainer.SourceTypeGit, Git: &gittypes.GitSource{URL: "http://github.com/org/repo"}}
 		require.NoError(t, tx.Source().Create(adminUserContext, src))
 		unusedID = src.ID
 

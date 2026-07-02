@@ -169,7 +169,7 @@ func TestInspectHandler_GitConfigPopulatedFromSource(t *testing.T) {
 	require.NoError(t, ds.UpdateTx(func(tx dataservices.DataStoreTx) error {
 		src := &portainer.Source{
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL:           "https://github.com/example/repo",
 				TLSSkipVerify: true,
 			},

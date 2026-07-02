@@ -7,6 +7,7 @@ import (
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
 	"github.com/portainer/portainer/api/dataservices/source"
+	gittypes "github.com/portainer/portainer/api/git/types"
 )
 
 func populateGitConfig(tx dataservices.DataStoreTx, userContext source.UserContext, template *portainer.CustomTemplate) {
@@ -21,10 +22,14 @@ func populateGitConfig(tx dataservices.DataStoreTx, userContext source.UserConte
 		return
 	}
 
-	cfg := *src.Git
-	cfg.ReferenceName = file.Ref
-	cfg.ConfigFilePath = file.Path
-	cfg.ConfigHash = file.Hash
+	cfg := &gittypes.RepoConfig{
+		URL:            src.Git.URL,
+		Authentication: src.Git.Authentication,
+		TLSSkipVerify:  src.Git.TLSSkipVerify,
+		ReferenceName:  file.Ref,
+		ConfigFilePath: file.Path,
+		ConfigHash:     file.Hash,
+	}
 
 	if cfg.Authentication != nil {
 		sanitized := *cfg.Authentication
@@ -32,7 +37,7 @@ func populateGitConfig(tx dataservices.DataStoreTx, userContext source.UserConte
 		cfg.Authentication = &sanitized
 	}
 
-	template.GitConfig = &cfg
+	template.GitConfig = cfg
 }
 
 // IsValidNote reports whether note is safe to display. Notes containing <img> tags are rejected.

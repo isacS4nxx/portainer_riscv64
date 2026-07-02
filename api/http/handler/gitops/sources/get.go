@@ -20,7 +20,6 @@ type gitAuthInfo struct {
 }
 
 type connectionInfo struct {
-	ConfigFilePath string       `json:"configFilePath"`
 	TLSSkipVerify  bool         `json:"tlsSkipVerify"`
 	Authentication *gitAuthInfo `json:"authentication,omitempty"`
 }
@@ -103,7 +102,7 @@ func (h *Handler) getSource(w http.ResponseWriter, r *http.Request) *httperror.H
 	return response.JSON(w, detail)
 }
 
-func BuildSourceDetail(baseSource Source, cfg *gittypes.RepoConfig, sourceWfs []workflows.Workflow, access SourceAccess) SourceDetail {
+func BuildSourceDetail(baseSource Source, cfg *gittypes.GitSource, sourceWfs []workflows.Workflow, access SourceAccess) SourceDetail {
 	var autoUpdate *AutoUpdateInfo
 	if len(sourceWfs) > 0 {
 		autoUpdate = BuildAutoUpdateInfo(sourceWfs[0].AutoUpdate)
@@ -140,12 +139,11 @@ func BuildSourceAccess(source *portainer.Source) SourceAccess {
 	}
 }
 
-func buildConnectionInfo(cfg *gittypes.RepoConfig) connectionInfo {
+func buildConnectionInfo(cfg *gittypes.GitSource) connectionInfo {
 	if cfg == nil {
 		return connectionInfo{}
 	}
 	return connectionInfo{
-		ConfigFilePath: cfg.ConfigFilePath,
 		TLSSkipVerify:  cfg.TLSSkipVerify,
 		Authentication: buildGitAuthInfo(cfg.Authentication),
 	}

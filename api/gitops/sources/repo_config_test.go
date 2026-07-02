@@ -21,7 +21,7 @@ func TestResolveRepoConfig_WithSourceID_ReturnsSourceConfig(t *testing.T) {
 
 	src := &portainer.Source{
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
+		Git: &gittypes.GitSource{
 			URL:           "https://github.com/org/repo",
 			TLSSkipVerify: true,
 			Authentication: &gittypes.GitAuthentication{

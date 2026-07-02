@@ -127,7 +127,11 @@ func (b *GitMethodStackBuilder) prepare(ctx context.Context, payload *StackPaylo
 			src, err := workflows.FindOrCreateGitSource(tx, userContext, &portainer.Source{
 				Name: gittypes.RepoName(repoConfig.URL),
 				Type: portainer.SourceTypeGit,
-				Git:  &repoConfig,
+				Git: &gittypes.GitSource{
+					URL:            repoConfig.URL,
+					Authentication: repoConfig.Authentication,
+					TLSSkipVerify:  repoConfig.TLSSkipVerify,
+				},
 			})
 			if err != nil {
 				return fmt.Errorf("failed to find or create source: %w", err)

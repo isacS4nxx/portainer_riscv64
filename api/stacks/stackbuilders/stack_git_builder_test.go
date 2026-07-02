@@ -47,7 +47,7 @@ func TestGitMethodStackBuilder_WithSourceID_ReferencesExistingSource(t *testing.
 	src := &portainer.Source{
 		Name: "my-repo",
 		Type: portainer.SourceTypeGit,
-		Git: &gittypes.RepoConfig{
+		Git: &gittypes.GitSource{
 			URL: "https://github.com/org/private-repo",
 			Authentication: &gittypes.GitAuthentication{
 				Username: "git-user",

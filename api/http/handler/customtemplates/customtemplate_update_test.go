@@ -480,7 +480,7 @@ func TestCustomTemplateUpdate_WithSourceID_Success(t *testing.T) {
 		src := &portainer.Source{
 			Name: "example/repo",
 			Type: portainer.SourceTypeGit,
-			Git: &gittypes.RepoConfig{
+			Git: &gittypes.GitSource{
 				URL: "https://github.com/example/repo",
 			},
 		}

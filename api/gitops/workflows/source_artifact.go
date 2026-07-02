@@ -193,7 +193,11 @@ func SaveWorkflowGitConfig(tx gitSourceStore, userContext source.UserContext, wo
 		newSrc, err := FindOrCreateGitSource(tx, userContext, &portainer.Source{
 			Name: gittypes.RepoName(cfg.URL),
 			Type: portainer.SourceTypeGit,
-			Git:  cfg,
+			Git: &gittypes.GitSource{
+				URL:            cfg.URL,
+				Authentication: cfg.Authentication,
+				TLSSkipVerify:  cfg.TLSSkipVerify,
+			},
 		})
 		if err != nil {
 			return fmt.Errorf("failed to find or create source: %w", err)

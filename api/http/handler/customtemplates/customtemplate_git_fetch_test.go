@@ -177,7 +177,7 @@ func Test_customTemplateGitFetch(t *testing.T) {
 		ID:     1,
 		Type:   portainer.SourceTypeGit,
 		Public: true,
-		Git: &gittypes.RepoConfig{
+		Git: &gittypes.GitSource{
 			URL: "https://github.com/example/repo",
 		},
 	}
