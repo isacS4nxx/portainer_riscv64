@@ -2,6 +2,56 @@ package workflows
 
 import portainer "github.com/portainer/portainer/api"
 
+func SourceStatusToPhase(s portainer.SourceStatus, errMsg string) WorkflowPhaseStatus {
+	switch s {
+	case portainer.SourceStatusHealthy:
+		return WorkflowPhaseStatus{Status: StatusHealthy}
+	case portainer.SourceStatusError:
+		return WorkflowPhaseStatus{Status: StatusError, Error: errMsg}
+	default:
+		return WorkflowPhaseStatus{Status: StatusUnknown}
+	}
+}
+
+// ArtifactPhases returns the source and artifact-path health phases for an artifact's files,
+// aggregating the worst-priority status across all of its files. The source phase also folds in
+// each file's Source connectivity status, since a broken source invalidates ref resolution
+// regardless of the file's own cached RefStatus.
+func ArtifactPhases(files []portainer.ArtifactFile, sourceMap map[portainer.SourceID]portainer.Source) (source, artifact WorkflowPhaseStatus) {
+	source = WorkflowPhaseStatus{Status: StatusUnknown}
+	artifact = WorkflowPhaseStatus{Status: StatusUnknown}
+
+	for _, f := range files {
+		src, ok := sourceMap[f.SourceID]
+		if !ok {
+			continue
+		}
+
+		if srcPhase := SourceStatusToPhase(src.Status, src.StatusError); statusPriority(srcPhase.Status) > statusPriority(source.Status) {
+			source = srcPhase
+		}
+		if refPhase := SourceStatusToPhase(f.RefStatus, f.RefError); statusPriority(refPhase.Status) > statusPriority(source.Status) {
+			source = refPhase
+		}
+		if artifactPhase := SourceStatusToPhase(f.PathStatus, f.PathError); statusPriority(artifactPhase.Status) > statusPriority(artifact.Status) {
+			artifact = artifactPhase
+		}
+	}
+
+	return source, artifact
+}
+
+func WorkflowPhaseToStatus(p WorkflowPhaseStatus) (portainer.SourceStatus, string) {
+	switch p.Status {
+	case StatusHealthy:
+		return portainer.SourceStatusHealthy, ""
+	case StatusError:
+		return portainer.SourceStatusError, p.Error
+	default:
+		return portainer.SourceStatusUnknown, ""
+	}
+}
+
 func deriveStackTargetState(s portainer.Stack) WorkflowPhaseStatus {
 	if len(s.DeploymentStatus) == 0 {
 		return WorkflowPhaseStatus{Status: StatusHealthy}

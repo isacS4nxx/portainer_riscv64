@@ -1,8 +1,6 @@
 package workflows
 
 import (
-	"context"
-
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
 	"github.com/portainer/portainer/api/dataservices/source"
@@ -14,14 +12,15 @@ import (
 
 // FetchWorkflows returns all GitOps workflows visible to the given user.
 func FetchWorkflows(
-	ctx context.Context,
 	tx dataservices.DataStoreTx,
-	gitService portainer.GitService,
 	k8sFactory *cli.ClientFactory,
 	sc *security.RestrictedRequestContext,
 	endpointIDSet set.Set[portainer.EndpointID],
 ) ([]Workflow, error) {
 	gitConfigs := map[portainer.StackID]*gittypes.RepoConfig{}
+	sourceIDs := map[portainer.StackID]portainer.SourceID{}
+	sourcePhases := map[portainer.StackID]WorkflowPhaseStatus{}
+	artifactPhases := map[portainer.StackID]WorkflowPhaseStatus{}
 
 	userContext := source.NewUserContext(sc.User, sc.UserMemberships)
 
@@ -32,12 +31,12 @@ func FetchWorkflows(
 		return nil, err
 	}
 
-	endpointMap, err := buildEndpointMap(tx, stacks)
+	endpointMap, err := BuildEndpointMap(tx, stacks)
 	if err != nil {
 		return nil, err
 	}
 
-	stacks, err = filterDockerStacksByAccess(tx, stacks, sc)
+	stacks, err = FilterDockerStacksByAccess(tx, stacks, sc)
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +79,9 @@ func FetchWorkflows(
 
 				if src.Type == portainer.SourceTypeGit {
 					gitConfigs[stack.ID] = MergeSourceAndFile(&src, &f)
+					sourceIDs[stack.ID] = src.ID
+					sourcePhases[stack.ID] = SourceStatusToPhase(f.RefStatus, f.RefError)
+					artifactPhases[stack.ID] = SourceStatusToPhase(f.PathStatus, f.PathError)
 					break outer
 				}
 			}
@@ -106,8 +108,7 @@ func FetchWorkflows(
 	items := make([]Workflow, 0, len(stacks))
 	for _, stack := range stacks {
 		gitConfig := gitConfigs[stack.ID]
-		source, artifact := ComputeGitPhasesForConfig(ctx, gitService, gitConfig)
-		items = append(items, MapStackToWorkflow(stack, gitConfig, source, artifact))
+		items = append(items, MapStackToWorkflow(stack, sourceIDs[stack.ID], gitConfig, sourcePhases[stack.ID], artifactPhases[stack.ID]))
 	}
 
 	return items, nil
@@ -117,7 +118,6 @@ func FetchWorkflows(
 type SourceStats struct {
 	WorkflowCount int
 	EndpointIDs   set.Set[portainer.EndpointID]
-	LastSync      int64
 }
 
 // FetchSourceStats returns all sources and per-source stats for sources accessible to the given user.
@@ -139,12 +139,12 @@ func FetchSourceStats(
 		return nil, nil, err
 	}
 
-	endpointMap, err := buildEndpointMap(tx, allStacks)
+	endpointMap, err := BuildEndpointMap(tx, allStacks)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	allStacks, err = filterDockerStacksByAccess(tx, allStacks, sc)
+	allStacks, err = FilterDockerStacksByAccess(tx, allStacks, sc)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,13 +197,13 @@ func FetchSourceStats(
 		if stack.EndpointID != 0 {
 			epIDs = []portainer.EndpointID{stack.EndpointID}
 		}
-		addSourceStats(stats, stackSourceIDs[stack.ID], epIDs, StackLastSyncDate(stack))
+		addSourceStats(stats, stackSourceIDs[stack.ID], epIDs)
 	}
 
 	return sources, stats, nil
 }
 
-func addSourceStats(result map[portainer.SourceID]SourceStats, srcIDs []portainer.SourceID, epIDs []portainer.EndpointID, lastSync int64) {
+func addSourceStats(result map[portainer.SourceID]SourceStats, srcIDs []portainer.SourceID, epIDs []portainer.EndpointID) {
 	for _, srcID := range srcIDs {
 		st := result[srcID]
 		if st.EndpointIDs == nil {
@@ -213,7 +213,6 @@ func addSourceStats(result map[portainer.SourceID]SourceStats, srcIDs []portaine
 		for _, epID := range epIDs {
 			st.EndpointIDs.Add(epID)
 		}
-		st.LastSync = max(lastSync, st.LastSync)
 		result[srcID] = st
 	}
 }

@@ -713,22 +713,6 @@ export const zPortainerAccessPolicy = z.object({
   RoleId: z.int(),
 });
 
-export const zPortainerArtifactFile = z.object({
-  hash: z.string().optional(),
-  path: z.string().optional(),
-  ref: z.string().optional(),
-  sourceId: z.int().optional(),
-});
-
-export const zPortainerArtifact = z.object({
-  edgeGroups: z.array(z.int()).optional(),
-  edgeStackId: z.int().optional(),
-  envGroups: z.array(z.int()).optional(),
-  envIds: z.array(z.int()).optional(),
-  files: z.array(zPortainerArtifactFile).optional(),
-  stackId: z.int().optional(),
-});
-
 export const zPortainerAuthenticationMethod = z.union([
   z.literal(0),
   z.literal(1),
@@ -1252,6 +1236,32 @@ export const zPortainerSslSettings = z.object({
   selfSigned: z.boolean().optional(),
 });
 
+export const zPortainerSourceStatus = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+]);
+
+export const zPortainerArtifactFile = z.object({
+  hash: z.string().optional(),
+  path: z.string().optional(),
+  pathError: z.string().optional(),
+  pathStatus: zPortainerSourceStatus.optional(),
+  ref: z.string().optional(),
+  refError: z.string().optional(),
+  refStatus: zPortainerSourceStatus.optional(),
+  sourceId: z.int().optional(),
+});
+
+export const zPortainerArtifact = z.object({
+  edgeGroups: z.array(z.int()).optional(),
+  edgeStackId: z.int().optional(),
+  envGroups: z.array(z.int()).optional(),
+  envIds: z.array(z.int()).optional(),
+  files: z.array(zPortainerArtifactFile).optional(),
+  stackId: z.int().optional(),
+});
+
 export const zPortainerSourceType = z.union([
   z.literal(0),
   z.literal(1),
@@ -1629,6 +1639,8 @@ export const zPortainerSource = z.object({
   ownerID: z.int().optional(),
   public: z.boolean().optional(),
   registry: zPortainerRegistry.optional(),
+  status: zPortainerSourceStatus.optional(),
+  statusError: z.string().optional(),
   teamAccesses: z.array(z.int()).optional(),
   type: zPortainerSourceType.optional(),
   userAccesses: z.array(z.int()).optional(),
@@ -2064,6 +2076,8 @@ export const zSourcesSourceAccessUpdatePayload = z.object({
 });
 
 export const zSourcesSourceType = z.enum(['git', 'helm', 'oci']);
+
+export const zSourcesStatus = z.enum(['unknown', 'healthy', 'error']);
 
 export const zSourcesGitAuthInfo = z.object({
   username: z.string().optional(),
@@ -3273,6 +3287,17 @@ export const zWebhooksWebhookUpdatePayload = z.object({
   RegistryID: z.int().optional(),
 });
 
+export const zWorkflowsArtifactFileDetail = z.object({
+  hash: z.string().optional(),
+  path: z.string().optional(),
+  pathError: z.string().optional(),
+  pathStatus: zSourcesStatus.optional(),
+  ref: z.string().optional(),
+  refError: z.string().optional(),
+  refStatus: zSourcesStatus.optional(),
+  sourceId: z.int().optional(),
+});
+
 export const zWorkflowsDeploymentPlatform = z.enum([
   'dockerStandalone',
   'dockerSwarm',
@@ -3328,6 +3353,19 @@ export const zWorkflowsWorkflowStatusObject = z.object({
   target: zWorkflowsWorkflowPhaseStatus.optional(),
 });
 
+export const zWorkflowsArtifactDetail = z.object({
+  autoUpdate: zPortainerAutoUpdateSettings.optional(),
+  creationDate: z.int().optional(),
+  files: z.array(zWorkflowsArtifactFileDetail).optional(),
+  id: z.int(),
+  lastSyncDate: z.int().optional(),
+  name: z.string(),
+  platform: zWorkflowsDeploymentPlatform.optional(),
+  status: zWorkflowsWorkflowStatusObject.optional(),
+  target: zWorkflowsTarget.optional(),
+  type: zWorkflowsType,
+});
+
 export const zWorkflowsWorkflow = z.object({
   autoUpdate: zPortainerAutoUpdateSettings.optional(),
   creationDate: z.int().optional(),
@@ -3336,6 +3374,7 @@ export const zWorkflowsWorkflow = z.object({
   lastSyncDate: z.int().optional(),
   name: z.string(),
   platform: zWorkflowsDeploymentPlatform,
+  sourceId: z.int().optional(),
   status: zWorkflowsWorkflowStatusObject,
   target: zWorkflowsTarget,
   type: zWorkflowsType,
@@ -3355,6 +3394,12 @@ export const zSourcesSourceDetail = z.object({
   url: z.string(),
   usedBy: z.int().optional(),
   workflows: z.array(zWorkflowsWorkflow).optional(),
+});
+
+export const zWorkflowsWorkflowDetail = z.object({
+  artifacts: z.array(zWorkflowsArtifactDetail).optional(),
+  id: z.int(),
+  name: z.string(),
 });
 
 /**
@@ -4406,6 +4451,15 @@ export const zGitOpsWorkflowsListQuery = z.object({
  * OK
  */
 export const zGitOpsWorkflowsListResponse = z.array(zWorkflowsWorkflow);
+
+export const zGitOpsWorkflowGetPath = z.object({
+  id: z.int(),
+});
+
+/**
+ * OK
+ */
+export const zGitOpsWorkflowGetResponse = zWorkflowsWorkflowDetail;
 
 /**
  * OK

@@ -1706,7 +1706,11 @@ export type PortainerArtifact = {
 export type PortainerArtifactFile = {
   hash?: string;
   path?: string;
+  pathError?: string;
+  pathStatus?: PortainerSourceStatus;
   ref?: string;
+  refError?: string;
+  refStatus?: PortainerSourceStatus;
   sourceId?: number;
 };
 
@@ -3013,10 +3017,30 @@ export type PortainerSource = {
   ownerID?: number;
   public?: boolean;
   registry?: PortainerRegistry;
+  status?: PortainerSourceStatus;
+  statusError?: string;
   teamAccesses?: Array<number>;
   type?: PortainerSourceType;
   userAccesses?: Array<number>;
 };
+
+export const PortainerSourceStatus = {
+  /**
+   * SourceStatusUnknown
+   */
+  SOURCE_STATUS_UNKNOWN: 0,
+  /**
+   * SourceStatusHealthy
+   */
+  SOURCE_STATUS_HEALTHY: 1,
+  /**
+   * SourceStatusError
+   */
+  SOURCE_STATUS_ERROR: 2,
+} as const;
+
+export type PortainerSourceStatus =
+  (typeof PortainerSourceStatus)[keyof typeof PortainerSourceStatus];
 
 export const PortainerSourceType = {
   /**
@@ -4384,6 +4408,23 @@ export const SourcesSourceType = {
 export type SourcesSourceType =
   (typeof SourcesSourceType)[keyof typeof SourcesSourceType];
 
+export const SourcesStatus = {
+  /**
+   * SourceStatusUnknown
+   */
+  SOURCE_STATUS_UNKNOWN: 'unknown',
+  /**
+   * SourceStatusHealthy
+   */
+  SOURCE_STATUS_HEALTHY: 'healthy',
+  /**
+   * SourceStatusError
+   */
+  SOURCE_STATUS_ERROR: 'error',
+} as const;
+
+export type SourcesStatus = (typeof SourcesStatus)[keyof typeof SourcesStatus];
+
 export type SourcesConnectionInfo = {
   authentication?: SourcesGitAuthInfo;
   tlsSkipVerify?: boolean;
@@ -4548,7 +4589,13 @@ export type StacksStackGitRedeployPayload = {
    * Force a pulling to current image with the original tag though the image is already the latest
    */
   PullImage?: boolean;
+  /**
+   * When true and RepositoryPassword is non-empty, stored credentials are replaced.
+   */
   RepositoryAuthentication?: boolean;
+  /**
+   * Non-empty value (with RepositoryAuthentication=true) replaces stored credentials; leave blank to keep them.
+   */
   RepositoryPassword?: string;
   RepositoryReferenceName?: string;
   RepositoryUsername?: string;
@@ -8153,6 +8200,30 @@ export type WebhooksWebhookUpdatePayload = {
   RegistryID?: number;
 };
 
+export type WorkflowsArtifactDetail = {
+  autoUpdate?: PortainerAutoUpdateSettings;
+  creationDate?: number;
+  files?: Array<WorkflowsArtifactFileDetail>;
+  id: number;
+  lastSyncDate?: number;
+  name: string;
+  platform?: WorkflowsDeploymentPlatform;
+  status?: WorkflowsWorkflowStatusObject;
+  target?: WorkflowsTarget;
+  type: WorkflowsType;
+};
+
+export type WorkflowsArtifactFileDetail = {
+  hash?: string;
+  path?: string;
+  pathError?: string;
+  pathStatus?: SourcesStatus;
+  ref?: string;
+  refError?: string;
+  refStatus?: SourcesStatus;
+  sourceId?: number;
+};
+
 export const WorkflowsDeploymentPlatform = {
   /**
    * DeploymentPlatformDockerStandalone
@@ -8235,9 +8306,16 @@ export type WorkflowsWorkflow = {
   lastSyncDate?: number;
   name: string;
   platform: WorkflowsDeploymentPlatform;
+  sourceId?: number;
   status: WorkflowsWorkflowStatusObject;
   target: WorkflowsTarget;
   type: WorkflowsType;
+};
+
+export type WorkflowsWorkflowDetail = {
+  artifacts?: Array<WorkflowsArtifactDetail>;
+  id: number;
+  name: string;
 };
 
 export type WorkflowsWorkflowPhaseStatus = {
@@ -11765,6 +11843,43 @@ export type GitOpsWorkflowsListResponses = {
 
 export type GitOpsWorkflowsListResponse =
   GitOpsWorkflowsListResponses[keyof GitOpsWorkflowsListResponses];
+
+export type GitOpsWorkflowGetData = {
+  body?: never;
+  path: {
+    /**
+     * Workflow identifier
+     */
+    id: number;
+  };
+  query?: never;
+  url: '/gitops/workflows/{id}';
+};
+
+export type GitOpsWorkflowGetErrors = {
+  /**
+   * Invalid request
+   */
+  400: unknown;
+  /**
+   * Workflow not found
+   */
+  404: unknown;
+  /**
+   * Server error
+   */
+  500: unknown;
+};
+
+export type GitOpsWorkflowGetResponses = {
+  /**
+   * OK
+   */
+  200: WorkflowsWorkflowDetail;
+};
+
+export type GitOpsWorkflowGetResponse =
+  GitOpsWorkflowGetResponses[keyof GitOpsWorkflowGetResponses];
 
 export type GitOpsWorkflowsSummaryData = {
   body?: never;

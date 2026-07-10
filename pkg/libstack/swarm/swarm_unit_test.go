@@ -3,6 +3,7 @@ package swarm
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -75,6 +76,47 @@ func Test_aggregateStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expectedStatus, aggregateStatus(tt.statuses))
+		})
+	}
+}
+
+func Test_cliOptions(t *testing.T) {
+	t.Parallel()
+
+	registries := []configtypes.AuthConfig{
+		{ServerAddress: "registry.example.com", Username: "user", Password: "pass"},
+		{ServerAddress: dockerregistry.IndexServer, Username: "other"},
+	}
+
+	tests := []struct {
+		name       string
+		host       string
+		registries []configtypes.AuthConfig
+		expected   libstack.DockerCliOptions
+	}{
+		{
+			name:       "sets manager-operation header and passes through host and registries",
+			host:       "tcp://127.0.0.1:2377",
+			registries: registries,
+			expected: libstack.DockerCliOptions{
+				Host:       "tcp://127.0.0.1:2377",
+				Registries: registries,
+				Headers:    map[string]string{managerOperationHeader: "1"},
+			},
+		},
+		{
+			name: "empty host and nil registries still set the header",
+			expected: libstack.DockerCliOptions{
+				Headers: map[string]string{managerOperationHeader: "1"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, cliOptions(tt.host, tt.registries))
 		})
 	}
 }
@@ -219,6 +261,7 @@ func Test_getConfig(t *testing.T) {
 
 	writeFile := func(name, content string) string {
 		path := filesystem.JoinPaths(dir, name)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 		require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 		return path
 	}
@@ -229,7 +272,6 @@ func Test_getConfig(t *testing.T) {
 		name         string
 		composeFiles map[string]string
 		files        map[string]string
-		workingDir   string
 		env          []string
 		osEnv        map[string]string
 		expectedCfg  *composetypes.Config
@@ -243,7 +285,6 @@ services:
   web:
     image: nginx:latest`,
 			},
-			workingDir: dir,
 			expectedCfg: &composetypes.Config{
 				Filename: dir + "/valid.yml",
 				Version:  "3.13",
@@ -265,7 +306,6 @@ services:
 			composeFiles: map[string]string{
 				"invalid.yml": `not: valid: yaml: content`,
 			},
-			workingDir:  dir,
 			expectedErr: "failed to load compose file: yaml: mapping values are not allowed in this context",
 		},
 		{
@@ -280,7 +320,6 @@ services:
   web:
     command: echo hello`,
 			},
-			workingDir:  dir,
 			expectedErr: "invalid image reference for service web: no image specified",
 		},
 		{
@@ -295,7 +334,6 @@ services:
   worker:
     image: alpine:latest`,
 			},
-			workingDir: dir,
 			expectedCfg: &composetypes.Config{
 				Filename: dir + "/base.yml",
 				Version:  "3.13",
@@ -325,8 +363,7 @@ services:
   web:
     image: nginx:${TAG}`,
 			},
-			workingDir: dir,
-			env:        []string{"TAG=1.25"},
+			env: []string{"TAG=1.25"},
 			expectedCfg: &composetypes.Config{
 				Filename: dir + "/envvar.yml",
 				Version:  "3.13",
@@ -351,7 +388,6 @@ services:
   web:
     image: nginx:${PORTAINER_TAG}`,
 			},
-			workingDir: dir,
 			osEnv: map[string]string{
 				libstack.PortainerEnvVarsPrefix + "TAG": "1.25",
 			},
@@ -372,7 +408,7 @@ services:
 			},
 		},
 		{
-			name: "env_file with relative path is resolved using workingDir",
+			name: "env_file with relative path is resolved against the compose file directory",
 			composeFiles: map[string]string{
 				"docker-compose.yaml": `services:
   configtest:
@@ -383,7 +419,6 @@ services:
 			files: map[string]string{
 				"stack.env": "A=junk",
 			},
-			workingDir: dir,
 			expectedCfg: &composetypes.Config{
 				Filename: dir + "/docker-compose.yaml",
 				Version:  "3.13",
@@ -415,7 +450,6 @@ services:
 			files: map[string]string{
 				"stack.env": "A=junk",
 			},
-			workingDir: dir,
 			expectedCfg: &composetypes.Config{
 				Filename: dir + "/docker-compose.yaml",
 				Version:  "3.13",
@@ -427,6 +461,41 @@ services:
 						},
 						Image:   "nginx:latest",
 						EnvFile: []string{dir + "/stack.env"},
+					},
+				},
+				Networks: map[string]composetypes.NetworkConfig{},
+				Volumes:  map[string]composetypes.VolumeConfig{},
+				Secrets:  map[string]composetypes.SecretConfig{},
+				Configs:  map[string]composetypes.ConfigObjConfig{},
+			},
+		},
+		{
+			// Regression test for BE-13157: a Git stack whose compose file lives in a
+			// sub-directory must resolve a sibling env_file relative to that sub-directory,
+			// not the project root.
+			name: "env_file with relative path is resolved within the compose file sub-directory",
+			composeFiles: map[string]string{
+				"sub/docker-compose.yaml": `services:
+  configtest:
+    image: nginx:latest
+    env_file:
+      - stack.env`,
+			},
+			files: map[string]string{
+				"sub/stack.env": "A=junk",
+				"stack.env":     "A=not-this-one",
+			},
+			expectedCfg: &composetypes.Config{
+				Filename: dir + "/sub/docker-compose.yaml",
+				Version:  "3.13",
+				Services: composetypes.Services{
+					composetypes.ServiceConfig{
+						Name: "configtest",
+						Environment: composetypes.MappingWithEquals{
+							"A": getStrPointer("junk"),
+						},
+						Image:   "nginx:latest",
+						EnvFile: []string{dir + "/sub/stack.env"},
 					},
 				},
 				Networks: map[string]composetypes.NetworkConfig{},
@@ -453,7 +522,7 @@ services:
 				t.Setenv(k, v)
 			}
 
-			cfg, err := getConfig(filePaths, tt.workingDir, tt.env)
+			cfg, err := getConfig(filePaths, tt.env)
 			if err != nil {
 				if tt.expectedErr == "" {
 					t.Fatalf("expected no error but got: %v", err)

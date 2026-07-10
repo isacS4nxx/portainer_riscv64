@@ -1329,12 +1329,16 @@ type (
 		Registry *Registry           `json:"registry,omitempty"`
 		Helm     *HelmConfig         `json:"helm,omitempty"`
 
-		Public             bool     `json:"public"`
-		AdministratorsOnly bool     `json:"administratorsOnly"`
-		UserAccesses       []UserID `json:"userAccesses"`
-		TeamAccesses       []TeamID `json:"teamAccesses"`
-		OwnerID            UserID   `json:"ownerID,omitempty"`
+		Public             bool         `json:"public"`
+		AdministratorsOnly bool         `json:"administratorsOnly"`
+		UserAccesses       []UserID     `json:"userAccesses"`
+		TeamAccesses       []TeamID     `json:"teamAccesses"`
+		OwnerID            UserID       `json:"ownerID,omitempty"`
+		Status             SourceStatus `json:"status,omitempty"`
+		StatusError        string       `json:"statusError,omitempty"`
 	}
+
+	SourceStatus int
 
 	// SourceID represents a source identifier
 	SourceID int
@@ -1633,10 +1637,14 @@ type (
 
 	// ArtifactFile represents one file within an artifact, tied to a specific source and location within it
 	ArtifactFile struct {
-		SourceID SourceID `json:"sourceId"`
-		Path     string   `json:"path,omitempty" example:"portainer.yaml"`
-		Ref      string   `json:"ref,omitempty" example:"refs/heads/main"`
-		Hash     string   `json:"hash,omitempty" example:"abc123"`
+		SourceID   SourceID     `json:"sourceId"`
+		Path       string       `json:"path,omitempty" example:"portainer.yaml"`
+		Ref        string       `json:"ref,omitempty" example:"refs/heads/main"`
+		Hash       string       `json:"hash,omitempty" example:"abc123"`
+		RefStatus  SourceStatus `json:"refStatus,omitempty"`
+		RefError   string       `json:"refError,omitempty"`
+		PathStatus SourceStatus `json:"pathStatus,omitempty"`
+		PathError  string       `json:"pathError,omitempty"`
 	}
 
 	// Workflow represents a GitOps workflow
@@ -2302,6 +2310,15 @@ const (
 )
 
 const (
+	// SourceStatusUnknown means the check has not been performed yet
+	SourceStatusUnknown SourceStatus = iota
+	// SourceStatusHealthy means the last check succeeded
+	SourceStatusHealthy
+	// SourceStatusError means the last check failed
+	SourceStatusError
+)
+
+const (
 	_ RegistryType = iota
 	// QuayRegistry represents a Quay.io registry
 	QuayRegistry
@@ -2659,18 +2676,19 @@ const (
 
 const (
 	// PolicyType constants
-	RbacK8s            PolicyType = "rbac-k8s"
-	SecurityK8s        PolicyType = "security-k8s"
-	SetupK8s           PolicyType = "setup-k8s"
-	RegistryK8s        PolicyType = "registry-k8s"
-	RbacDocker         PolicyType = "rbac-docker"
-	SecurityDocker     PolicyType = "security-docker"
-	SetupDocker        PolicyType = "setup-docker"
-	RegistryDocker     PolicyType = "registry-docker"
-	ChangeConfirmation PolicyType = "change-confirmation"
-	CleanupDocker      PolicyType = "cleanup-docker"
-	ObservabilityK8s   PolicyType = "observability-k8s"
-	NetworkSecurityK8s PolicyType = "network-security-k8s"
+	RbacK8s                 PolicyType = "rbac-k8s"
+	SecurityK8s             PolicyType = "security-k8s"
+	SetupK8s                PolicyType = "setup-k8s"
+	RegistryK8s             PolicyType = "registry-k8s"
+	RbacDocker              PolicyType = "rbac-docker"
+	SecurityDocker          PolicyType = "security-docker"
+	SetupDocker             PolicyType = "setup-docker"
+	RegistryDocker          PolicyType = "registry-docker"
+	ChangeConfirmation      PolicyType = "change-confirmation"
+	CleanupDocker           PolicyType = "cleanup-docker"
+	ObservabilityK8s        PolicyType = "observability-k8s"
+	PodSecurityStandardsK8s PolicyType = "pod-security-standards-k8s"
+	NetworkSecurityK8s      PolicyType = "network-security-k8s"
 )
 
 type HelmInstallStatus string
