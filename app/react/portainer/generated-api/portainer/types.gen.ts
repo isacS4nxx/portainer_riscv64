@@ -1479,6 +1479,44 @@ export type KubernetesK8sVolumeInfo = {
   storageClass?: KubernetesK8sStorageClass;
 };
 
+export type KubernetesKubernetesCreateNamespaceResponse = {
+  /**
+   * APIVersion defines the versioned schema of this representation of an object.
+   * Servers should convert recognized schemas to the latest internal value, and
+   * may reject unrecognized values.
+   * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+   * +optional
+   */
+  apiVersion?: string;
+  /**
+   * Kind is a string value representing the REST resource this object represents.
+   * Servers may infer this from the endpoint the client submits requests to.
+   * Cannot be updated.
+   * In CamelCase.
+   * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+   * +optional
+   */
+  kind?: string;
+  /**
+   * Standard object's metadata.
+   * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+   * +optional
+   */
+  metadata?: V1ObjectMeta;
+  /**
+   * Spec defines the behavior of the Namespace.
+   * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+   * +optional
+   */
+  spec?: V1NamespaceSpec;
+  /**
+   * Status describes the current status of a Namespace.
+   * More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+   * +optional
+   */
+  status?: V1NamespaceStatus;
+};
+
 export type KubernetesKubernetesNodeResponse = {
   /**
    * APIVersion defines the versioned schema of this representation of an object.
@@ -1751,6 +1789,8 @@ export type PortainerAutoUpdateSettings = {
   ForceUpdate?: boolean;
   /**
    * Auto update interval
+   * Deprecated: polling interval now lives on the associated Source (Source.Interval).
+   * Kept for DB backwards-compatibility only; new code must not read or write this field.
    */
   Interval?: string;
   /**
@@ -3012,6 +3052,7 @@ export type PortainerSource = {
   git?: GittypesGitSource;
   helm?: PortainerHelmConfig;
   id?: number;
+  interval?: string;
   lastSync?: number;
   name?: string;
   ownerID?: number;
@@ -4335,6 +4376,7 @@ export type SourcesGitAuthenticationUpdatePayload = {
 export type SourcesGitSourceCreatePayload = {
   administratorsOnly?: boolean;
   authentication?: SourcesGitAuthenticationPayload;
+  interval?: string;
   name?: string;
   public?: boolean;
   teamAccesses?: Array<number>;
@@ -4345,6 +4387,7 @@ export type SourcesGitSourceCreatePayload = {
 
 export type SourcesGitSourceUpdatePayload = {
   authentication?: SourcesGitAuthenticationUpdatePayload;
+  interval?: string;
   name?: string;
   tlsSkipVerify?: boolean;
   url?: string;
@@ -4354,6 +4397,7 @@ export type SourcesSource = {
   environments?: number;
   error?: string;
   id: number;
+  interval?: string;
   lastSync?: number;
   name: string;
   status: WorkflowsStatus;
@@ -4381,13 +4425,14 @@ export type SourcesSourceDetail = {
   environments?: number;
   error?: string;
   id: number;
+  interval?: string;
   lastSync?: number;
   name: string;
   status: WorkflowsStatus;
   type: SourcesSourceType;
   url: string;
   usedBy?: number;
-  workflows?: Array<WorkflowsWorkflow>;
+  workflows?: Array<WorkflowsSourceWorkflow>;
 };
 
 export const SourcesSourceType = {
@@ -4516,6 +4561,10 @@ export type StacksComposeStackFromGitRepositoryPayload = {
    * Deprecated: use SourceID instead. TLSSkipVerify skips SSL verification when cloning the Git repository.
    */
   TLSSkipVerify?: boolean;
+};
+
+export type StacksCreateKubernetesStackResponse = {
+  Output?: string;
 };
 
 export type StacksKubernetesGitDeploymentPayload = {
@@ -5838,6 +5887,16 @@ export type V1FileKeySelector = {
   volumeName?: string;
 };
 
+export const V1FinalizerName = {
+  /**
+   * FinalizerKubernetes
+   */
+  FINALIZER_KUBERNETES: 'kubernetes',
+} as const;
+
+export type V1FinalizerName =
+  (typeof V1FinalizerName)[keyof typeof V1FinalizerName];
+
 export type V1GrpcAction = {
   /**
    * Port number of the gRPC service. Number must be in the range 1 to 65535.
@@ -6127,6 +6186,16 @@ export const V1NamespacePhase = {
 
 export type V1NamespacePhase =
   (typeof V1NamespacePhase)[keyof typeof V1NamespacePhase];
+
+export type V1NamespaceSpec = {
+  /**
+   * Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
+   * More info: https://kubernetes.io/docs/tasks/administer-cluster/namespaces/
+   * +optional
+   * +listType=atomic
+   */
+  finalizers?: Array<V1FinalizerName>;
+};
 
 export type V1NamespaceStatus = {
   /**
@@ -8242,6 +8311,20 @@ export const WorkflowsDeploymentPlatform = {
 export type WorkflowsDeploymentPlatform =
   (typeof WorkflowsDeploymentPlatform)[keyof typeof WorkflowsDeploymentPlatform];
 
+export type WorkflowsSourceWorkflow = {
+  autoUpdate?: PortainerAutoUpdateSettings;
+  creationDate?: number;
+  gitConfig?: GittypesRepoConfig;
+  id: number;
+  lastSyncDate?: number;
+  name: string;
+  platform: WorkflowsDeploymentPlatform;
+  sourceId?: number;
+  status: WorkflowsWorkflowStatusObject;
+  target: WorkflowsTarget;
+  type: WorkflowsType;
+};
+
 export const WorkflowsStatus = {
   /**
    * StatusHealthy
@@ -8299,23 +8382,12 @@ export const WorkflowsType = {
 export type WorkflowsType = (typeof WorkflowsType)[keyof typeof WorkflowsType];
 
 export type WorkflowsWorkflow = {
-  autoUpdate?: PortainerAutoUpdateSettings;
+  artifacts?: Array<WorkflowsArtifactDetail>;
   creationDate?: number;
-  gitConfig?: GittypesRepoConfig;
   id: number;
   lastSyncDate?: number;
   name: string;
-  platform: WorkflowsDeploymentPlatform;
-  sourceId?: number;
   status: WorkflowsWorkflowStatusObject;
-  target: WorkflowsTarget;
-  type: WorkflowsType;
-};
-
-export type WorkflowsWorkflowDetail = {
-  artifacts?: Array<WorkflowsArtifactDetail>;
-  id: number;
-  name: string;
 };
 
 export type WorkflowsWorkflowPhaseStatus = {
@@ -11788,17 +11860,17 @@ export type GitOpsWorkflowsListData = {
   path?: never;
   query?: {
     /**
-     * Search term (matches name or repository URL)
+     * Search term (matches workflow name)
      */
     search?: string;
     /**
-     * Sort field: name | type | status | creationDate | lastSyncDate
+     * Sort field
      */
-    sort?: string;
+    sort?: 'name' | 'status' | 'creationDate' | 'lastSyncDate';
     /**
-     * Sort order: asc or desc
+     * Sort order
      */
-    order?: string;
+    order?: 'asc' | 'desc';
     /**
      * Pagination start index
      */
@@ -11812,22 +11884,26 @@ export type GitOpsWorkflowsListData = {
      */
     endpointIds?: Array<number>;
     /**
-     * Filter by status: healthy | syncing | error | paused | unknown
+     * Filter by status
      */
-    status?: string;
+    status?: 'healthy' | 'syncing' | 'error' | 'paused' | 'unknown';
     /**
-     * Filter by type: stack
+     * Keep workflows that have at least one artifact of this type
      */
-    type?: string;
+    type?: 'stack';
     /**
-     * Filter by platform: dockerStandalone | dockerSwarm | kubernetes
+     * Keep workflows that have at least one artifact on this platform
      */
-    platform?: string;
+    platform?: 'dockerStandalone' | 'dockerSwarm' | 'kubernetes';
   };
   url: '/gitops/workflows';
 };
 
 export type GitOpsWorkflowsListErrors = {
+  /**
+   * Invalid request
+   */
+  400: unknown;
   /**
    * Server error
    */
@@ -11875,7 +11951,7 @@ export type GitOpsWorkflowGetResponses = {
   /**
    * OK
    */
-  200: WorkflowsWorkflowDetail;
+  200: WorkflowsWorkflow;
 };
 
 export type GitOpsWorkflowGetResponse =
@@ -13109,7 +13185,10 @@ export type GetKubernetesMetricsForPodResponse =
   GetKubernetesMetricsForPodResponses[keyof GetKubernetesMetricsForPodResponses];
 
 export type DeleteKubernetesNamespaceData = {
-  body?: never;
+  /**
+   * List of namespace names to delete
+   */
+  body: Array<string>;
   path: {
     /**
      * Environment identifier
@@ -13153,15 +13232,15 @@ export type GetKubernetesNamespacesData = {
      */
     id: number;
   };
-  query: {
+  query?: {
     /**
      * When set to true, include the resource quota information as part of the Namespace information. Default is false
      */
-    withResourceQuota: boolean;
+    withResourceQuota?: boolean;
     /**
      * When set to true, include the unhealthy events information as part of the Namespace information. Default is false
      */
-    withUnhealthyEvents: boolean;
+    withUnhealthyEvents?: boolean;
   };
   url: '/kubernetes/{id}/namespaces';
 };
@@ -13241,7 +13320,7 @@ export type CreateKubernetesNamespaceResponses = {
   /**
    * Success
    */
-  200: PortainerK8sNamespaceInfo;
+  200: KubernetesKubernetesCreateNamespaceResponse;
 };
 
 export type CreateKubernetesNamespaceResponse =
@@ -13311,11 +13390,11 @@ export type GetKubernetesNamespaceData = {
      */
     namespace: string;
   };
-  query: {
+  query?: {
     /**
      * When set to true, include the resource quota information as part of the Namespace information. Default is false
      */
-    withResourceQuota: boolean;
+    withResourceQuota?: boolean;
   };
   url: '/kubernetes/{id}/namespaces/{namespace}';
 };
@@ -17007,7 +17086,7 @@ export type StackCreateKubernetesGitResponses = {
   /**
    * OK
    */
-  200: PortainerStack;
+  200: StacksCreateKubernetesStackResponse;
 };
 
 export type StackCreateKubernetesGitResponse =
@@ -17043,7 +17122,7 @@ export type StackCreateKubernetesFileResponses = {
   /**
    * OK
    */
-  200: PortainerStack;
+  200: StacksCreateKubernetesStackResponse;
 };
 
 export type StackCreateKubernetesFileResponse =
@@ -17079,7 +17158,7 @@ export type StackCreateKubernetesUrlResponses = {
   /**
    * OK
    */
-  200: PortainerStack;
+  200: StacksCreateKubernetesStackResponse;
 };
 
 export type StackCreateKubernetesUrlResponse =
@@ -18107,11 +18186,11 @@ export type HelmShowData = {
   };
   query: {
     /**
-     * Helm repository URL
+     * Helm repository URL (required unless chart is a self-contained oci:// reference)
      */
-    repo: string;
+    repo?: string;
     /**
-     * Chart name
+     * Chart name, or a self-contained oci:// chart reference
      */
     chart: string;
     /**

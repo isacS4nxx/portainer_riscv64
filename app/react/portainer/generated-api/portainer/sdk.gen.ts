@@ -834,6 +834,7 @@ import {
   zDeleteKubernetesIngressesBody,
   zDeleteKubernetesIngressesPath,
   zDeleteKubernetesIngressesResponse,
+  zDeleteKubernetesNamespaceBody,
   zDeleteKubernetesNamespacePath,
   zDeleteKubernetesNamespaceResponse,
   zDeleteKubernetesPersistentVolumeClaimsBody,
@@ -4423,7 +4424,7 @@ export const gitOpsSourcesTest = <ThrowOnError extends boolean = true>(
 /**
  * List all GitOps workflows
  *
- * Returns a unified list of all stacks that have GitOps (GitConfig) configured.
+ * Returns a list of GitOps workflows, each with its aggregated status and the artifacts it contains.
  * **Access policy**: authenticated
  */
 export const gitOpsWorkflowsList = <ThrowOnError extends boolean = true>(
@@ -5534,9 +5535,9 @@ export const getKubernetesMetricsForPod = <ThrowOnError extends boolean = true>(
   });
 
 /**
- * Delete a kubernetes namespace
+ * Delete kubernetes namespaces
  *
- * Delete a kubernetes namespace within the given environment.
+ * Delete one or more kubernetes namespaces within the given environment.
  * **Access policy**: Authenticated user.
  */
 export const deleteKubernetesNamespace = <ThrowOnError extends boolean = true>(
@@ -5554,7 +5555,7 @@ export const deleteKubernetesNamespace = <ThrowOnError extends boolean = true>(
     requestValidator: async (data) =>
       await z
         .object({
-          body: z.never().optional(),
+          body: zDeleteKubernetesNamespaceBody,
           path: zDeleteKubernetesNamespacePath,
           query: z.never().optional(),
         })
@@ -5567,6 +5568,10 @@ export const deleteKubernetesNamespace = <ThrowOnError extends boolean = true>(
     ],
     url: '/kubernetes/{id}/namespaces',
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
   });
 
 /**
@@ -5592,7 +5597,7 @@ export const getKubernetesNamespaces = <ThrowOnError extends boolean = true>(
         .object({
           body: z.never().optional(),
           path: zGetKubernetesNamespacesPath,
-          query: zGetKubernetesNamespacesQuery,
+          query: zGetKubernetesNamespacesQuery.optional(),
         })
         .parseAsync(data),
     responseType: 'json',
@@ -5713,7 +5718,7 @@ export const getKubernetesNamespace = <ThrowOnError extends boolean = true>(
         .object({
           body: z.never().optional(),
           path: zGetKubernetesNamespacePath,
-          query: zGetKubernetesNamespaceQuery,
+          query: zGetKubernetesNamespaceQuery.optional(),
         })
         .parseAsync(data),
     responseType: 'json',
@@ -9570,8 +9575,8 @@ export const tagDelete = <ThrowOnError extends boolean = true>(
 /**
  * List team memberships
  *
- * List team memberships. Access is only available to administrators and team leaders.
- * **Access policy**: administrator
+ * List team memberships. Access is only available to administrators and team leaders. Team leaders only see memberships of teams they lead.
+ * **Access policy**: administrator or team leader
  */
 export const teamMembershipList = <ThrowOnError extends boolean = true>(
   options?: Options<TeamMembershipListData, ThrowOnError>
@@ -9607,8 +9612,8 @@ export const teamMembershipList = <ThrowOnError extends boolean = true>(
 /**
  * Create a new team membership
  *
- * Create a new team memberships. Access is only available to administrators leaders of the associated team.
- * **Access policy**: administrator
+ * Create a new team memberships. Access is only available to administrators or leaders of the associated team.
+ * **Access policy**: administrator or leaders of the associated team
  */
 export const teamMembershipCreate = <ThrowOnError extends boolean = true>(
   options: Options<TeamMembershipCreateData, ThrowOnError>
@@ -9648,8 +9653,8 @@ export const teamMembershipCreate = <ThrowOnError extends boolean = true>(
 /**
  * Remove a team membership
  *
- * Remove a team membership. Access is only available to administrators leaders of the associated team.
- * **Access policy**: administrator
+ * Remove a team membership. Access is only available to administrators or leaders of the associated team.
+ * **Access policy**: administrator or leaders of the associated team
  */
 export const teamMembershipDelete = <ThrowOnError extends boolean = true>(
   options: Options<TeamMembershipDeleteData, ThrowOnError>
@@ -10032,6 +10037,7 @@ export const helmRepoSearch = <ThrowOnError extends boolean = true>(
  * Show Helm Chart Information
  *
  * **Access policy**: authenticated
+ * `repo` may be omitted when `chart` is a self-contained "oci://host/path" reference.
  */
 export const helmShow = <ThrowOnError extends boolean = true>(
   options: Options<HelmShowData, ThrowOnError>

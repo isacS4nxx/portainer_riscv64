@@ -3461,27 +3461,35 @@ paths:
   /gitops/workflows:
     get:
       description: >-
-        Returns a unified list of all stacks that have GitOps (GitConfig)
-        configured.
+        Returns a list of GitOps workflows, each with its aggregated status and
+        the artifacts it contains.
 
         **Access policy**: authenticated
       operationId: GitOpsWorkflowsList
       parameters:
-        - description: Search term (matches name or repository URL)
+        - description: Search term (matches workflow name)
           in: query
           name: search
           schema:
             type: string
-        - description: "Sort field: name | type | status | creationDate | lastSyncDate"
+        - description: Sort field
           in: query
           name: sort
           schema:
             type: string
-        - description: "Sort order: asc or desc"
+            enum:
+              - name
+              - status
+              - creationDate
+              - lastSyncDate
+        - description: Sort order
           in: query
           name: order
           schema:
             type: string
+            enum:
+              - asc
+              - desc
         - description: Pagination start index
           in: query
           name: start
@@ -3501,21 +3509,33 @@ paths:
             type: array
             items:
               type: integer
-        - description: "Filter by status: healthy | syncing | error | paused | unknown"
+        - description: Filter by status
           in: query
           name: status
           schema:
             type: string
-        - description: "Filter by type: stack"
+            enum:
+              - healthy
+              - syncing
+              - error
+              - paused
+              - unknown
+        - description: Keep workflows that have at least one artifact of this type
           in: query
           name: type
           schema:
             type: string
-        - description: "Filter by platform: dockerStandalone | dockerSwarm | kubernetes"
+            enum:
+              - stack
+        - description: Keep workflows that have at least one artifact on this platform
           in: query
           name: platform
           schema:
             type: string
+            enum:
+              - dockerStandalone
+              - dockerSwarm
+              - kubernetes
       responses:
         "200":
           description: OK
@@ -3525,6 +3545,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/workflows.Workflow"
                 type: array
+        "400":
+          description: Invalid request
         "500":
           description: Server error
       security:
@@ -3556,7 +3578,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/workflows.WorkflowDetail"
+                $ref: "#/components/schemas/workflows.Workflow"
         "400":
           description: Invalid request
         "404":
@@ -4817,7 +4839,7 @@ paths:
   "/kubernetes/{id}/namespaces":
     delete:
       description: |-
-        Delete a kubernetes namespace within the given environment.
+        Delete one or more kubernetes namespaces within the given environment.
         **Access policy**: Authenticated user.
       operationId: DeleteKubernetesNamespace
       parameters:
@@ -4827,6 +4849,15 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              items:
+                type: string
+              type: array
+        description: List of namespace names to delete
+        required: true
       responses:
         "200":
           description: Success
@@ -4844,7 +4875,7 @@ paths:
       security:
         - ApiKeyAuth: []
           jwt: []
-      summary: Delete a kubernetes namespace
+      summary: Delete kubernetes namespaces
       tags:
         - kubernetes
     get:
@@ -4867,14 +4898,12 @@ paths:
             the Namespace information. Default is false
           in: query
           name: withResourceQuota
-          required: true
           schema:
             type: boolean
         - description: When set to true, include the unhealthy events information as part
             of the Namespace information. Default is false
           in: query
           name: withUnhealthyEvents
-          required: true
           schema:
             type: boolean
       responses:
@@ -4934,7 +4963,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/portainer.K8sNamespaceInfo"
+                $ref: "#/components/schemas/kubernetes.KubernetesCreateNamespaceResponse"
         "400":
           description: Invalid request payload, such as missing required fields or fields
             not meeting validation criteria.
@@ -5032,7 +5061,6 @@ paths:
             the Namespace information. Default is false
           in: query
           name: withResourceQuota
-          required: true
           schema:
             type: boolean
       responses:
@@ -8567,7 +8595,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/portainer.Stack"
+                $ref: "#/components/schemas/stacks.createKubernetesStackResponse"
         "400":
           description: Invalid request
         "409":
@@ -8608,7 +8636,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/portainer.Stack"
+                $ref: "#/components/schemas/stacks.createKubernetesStackResponse"
         "400":
           description: Invalid request
         "500":
@@ -8647,7 +8675,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/portainer.Stack"
+                $ref: "#/components/schemas/stacks.createKubernetesStackResponse"
         "400":
           description: Invalid request
         "500":
@@ -9181,9 +9209,9 @@ paths:
     get:
       description: >-
         List team memberships. Access is only available to administrators and
-        team leaders.
+        team leaders. Team leaders only see memberships of teams they lead.
 
-        **Access policy**: administrator
+        **Access policy**: administrator or team leader
       operationId: TeamMembershipList
       responses:
         "200":
@@ -9209,9 +9237,9 @@ paths:
     post:
       description: >-
         Create a new team memberships. Access is only available to
-        administrators leaders of the associated team.
+        administrators or leaders of the associated team.
 
-        **Access policy**: administrator
+        **Access policy**: administrator or leaders of the associated team
       operationId: TeamMembershipCreate
       requestBody:
         content:
@@ -9244,10 +9272,10 @@ paths:
   "/team_memberships/{id}":
     delete:
       description: >-
-        Remove a team membership. Access is only available to administrators
+        Remove a team membership. Access is only available to administrators or
         leaders of the associated team.
 
-        **Access policy**: administrator
+        **Access policy**: administrator or leaders of the associated team
       operationId: TeamMembershipDelete
       parameters:
         - description: TeamMembership identifier
@@ -9619,16 +9647,19 @@ paths:
         - helm
   "/templates/helm/{command}":
     get:
-      description: "**Access policy**: authenticated"
+      description: >-
+        **Access policy**: authenticated
+
+        `repo` may be omitted when `chart` is a self-contained "oci://host/path" reference.
       operationId: HelmShow
       parameters:
-        - description: Helm repository URL
+        - description: Helm repository URL (required unless chart is a self-contained
+            oci:// reference)
           in: query
           name: repo
-          required: true
           schema:
             type: string
-        - description: Chart name
+        - description: Chart name, or a self-contained oci:// chart reference
           in: query
           name: chart
           required: true
@@ -13215,6 +13246,64 @@ components:
         storageClass:
           $ref: "#/components/schemas/kubernetes.K8sStorageClass"
       type: object
+    kubernetes.KubernetesCreateNamespaceResponse:
+      properties:
+        apiVersion:
+          description: >-
+            APIVersion defines the versioned schema of this representation of an
+            object.
+
+            Servers should convert recognized schemas to the latest internal value, and
+
+            may reject unrecognized values.
+
+            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+            +optional
+          type: string
+        kind:
+          description: >-
+            Kind is a string value representing the REST resource this object
+            represents.
+
+            Servers may infer this from the endpoint the client submits requests to.
+
+            Cannot be updated.
+
+            In CamelCase.
+
+            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+            +optional
+          type: string
+        metadata:
+          allOf:
+            - $ref: "#/components/schemas/v1.ObjectMeta"
+          description: >-
+            Standard object's metadata.
+
+            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+            +optional
+        spec:
+          allOf:
+            - $ref: "#/components/schemas/v1.NamespaceSpec"
+          description: >-
+            Spec defines the behavior of the Namespace.
+
+            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+            +optional
+        status:
+          allOf:
+            - $ref: "#/components/schemas/v1.NamespaceStatus"
+          description: >-
+            Status describes the current status of a Namespace.
+
+            More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+
+            +optional
+      type: object
     kubernetes.KubernetesNodeResponse:
       properties:
         apiVersion:
@@ -13547,7 +13636,12 @@ components:
           example: false
           type: boolean
         Interval:
-          description: Auto update interval
+          description: >-
+            Auto update interval
+
+            Deprecated: polling interval now lives on the associated Source (Source.Interval).
+
+            Kept for DB backwards-compatibility only; new code must not read or write this field.
           example: 1m30s
           type: string
         JobID:
@@ -15094,6 +15188,9 @@ components:
         id:
           example: 1
           type: integer
+        interval:
+          example: 5m
+          type: string
         lastSync:
           example: 1587399600
           type: integer
@@ -16585,6 +16682,8 @@ components:
           type: boolean
         authentication:
           $ref: "#/components/schemas/sources.GitAuthenticationPayload"
+        interval:
+          type: string
         name:
           type: string
         public:
@@ -16609,6 +16708,8 @@ components:
       properties:
         authentication:
           $ref: "#/components/schemas/sources.GitAuthenticationUpdatePayload"
+        interval:
+          type: string
         name:
           type: string
         tlsSkipVerify:
@@ -16624,6 +16725,9 @@ components:
           type: string
         id:
           type: integer
+        interval:
+          example: 5m
+          type: string
         lastSync:
           type: integer
         name:
@@ -16683,6 +16787,9 @@ components:
           type: string
         id:
           type: integer
+        interval:
+          example: 5m
+          type: string
         lastSync:
           type: integer
         name:
@@ -16697,7 +16804,7 @@ components:
           type: integer
         workflows:
           items:
-            $ref: "#/components/schemas/workflows.Workflow"
+            $ref: "#/components/schemas/workflows.SourceWorkflow"
           type: array
       required:
         - connection
@@ -16845,6 +16952,11 @@ components:
           type: boolean
       required:
         - Name
+      type: object
+    stacks.createKubernetesStackResponse:
+      properties:
+        Output:
+          type: string
       type: object
     stacks.kubernetesGitDeploymentPayload:
       properties:
@@ -18656,6 +18768,12 @@ components:
             +required
           type: string
       type: object
+    v1.FinalizerName:
+      enum:
+        - kubernetes
+      type: string
+      x-enum-varnames:
+        - FinalizerKubernetes
     v1.GRPCAction:
       properties:
         port:
@@ -18999,6 +19117,22 @@ components:
       x-enum-varnames:
         - NamespaceActive
         - NamespaceTerminating
+    v1.NamespaceSpec:
+      properties:
+        finalizers:
+          description: >-
+            Finalizers is an opaque list of values that must be empty to
+            permanently remove object from storage.
+
+            More info: https://kubernetes.io/docs/tasks/administer-cluster/namespaces/
+
+            +optional
+
+            +listType=atomic
+          items:
+            $ref: "#/components/schemas/v1.FinalizerName"
+          type: array
+      type: object
     v1.NamespaceStatus:
       properties:
         conditions:
@@ -21343,6 +21477,38 @@ components:
         - DeploymentPlatformDockerStandalone
         - DeploymentPlatformDockerSwarm
         - DeploymentPlatformKubernetes
+    workflows.SourceWorkflow:
+      properties:
+        autoUpdate:
+          $ref: "#/components/schemas/portainer.AutoUpdateSettings"
+        creationDate:
+          type: integer
+        gitConfig:
+          $ref: "#/components/schemas/gittypes.RepoConfig"
+        id:
+          type: integer
+        lastSyncDate:
+          type: integer
+        name:
+          type: string
+        platform:
+          $ref: "#/components/schemas/workflows.DeploymentPlatform"
+        sourceId:
+          type: integer
+        status:
+          $ref: "#/components/schemas/workflows.WorkflowStatusObject"
+        target:
+          $ref: "#/components/schemas/workflows.Target"
+        type:
+          $ref: "#/components/schemas/workflows.Type"
+      required:
+        - id
+        - name
+        - platform
+        - status
+        - target
+        - type
+      type: object
     workflows.Status:
       enum:
         - healthy
@@ -21399,49 +21565,24 @@ components:
         - TypeEdgeStack
     workflows.Workflow:
       properties:
-        autoUpdate:
-          $ref: "#/components/schemas/portainer.AutoUpdateSettings"
+        artifacts:
+          items:
+            $ref: "#/components/schemas/workflows.ArtifactDetail"
+          type: array
         creationDate:
           type: integer
-        gitConfig:
-          $ref: "#/components/schemas/gittypes.RepoConfig"
         id:
           type: integer
         lastSyncDate:
           type: integer
         name:
           type: string
-        platform:
-          $ref: "#/components/schemas/workflows.DeploymentPlatform"
-        sourceId:
-          type: integer
         status:
           $ref: "#/components/schemas/workflows.WorkflowStatusObject"
-        target:
-          $ref: "#/components/schemas/workflows.Target"
-        type:
-          $ref: "#/components/schemas/workflows.Type"
       required:
         - id
         - name
-        - platform
         - status
-        - target
-        - type
-      type: object
-    workflows.WorkflowDetail:
-      properties:
-        artifacts:
-          items:
-            $ref: "#/components/schemas/workflows.ArtifactDetail"
-          type: array
-        id:
-          type: integer
-        name:
-          type: string
-      required:
-        - id
-        - name
       type: object
     workflows.WorkflowPhaseStatus:
       properties:

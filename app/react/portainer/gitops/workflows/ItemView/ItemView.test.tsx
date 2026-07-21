@@ -9,7 +9,7 @@ import { withTestRouter } from '@/react/test-utils/withRouter';
 import { withUserProvider } from '@/react/test-utils/withUserProvider';
 import { UserViewModel } from '@/portainer/models/user';
 
-import { WorkflowDetail } from '../types';
+import { Workflow } from '../types';
 import {
   mockWorkflowHealthy,
   mockWorkflowEmpty,
@@ -20,10 +20,12 @@ import { ItemView } from './ItemView';
 const useCurrentStateAndParams = vi.fn(() => ({
   params: { workflowId: 1 },
 }));
+const go = vi.fn();
 
 vi.mock('@uirouter/react', async (importOriginal: () => Promise<object>) => ({
   ...(await importOriginal()),
   useCurrentStateAndParams: () => useCurrentStateAndParams(),
+  useRouter: () => ({ stateService: { go } }),
 }));
 
 // Avoid ui-router relative/unregistered state resolution in tests, same as WidgetTabs.test.tsx
@@ -78,7 +80,8 @@ describe('ItemView', () => {
   });
 });
 
-function renderComponent(workflow: WorkflowDetail = mockWorkflowHealthy) {
+function renderComponent(workflow: Workflow = mockWorkflowHealthy) {
+  go.mockClear();
   useCurrentStateAndParams.mockReturnValue({
     params: { workflowId: workflow.id },
   });

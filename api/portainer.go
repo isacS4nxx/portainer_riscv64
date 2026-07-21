@@ -50,6 +50,8 @@ type (
 	// AutoUpdateSettings represents the git auto sync config for stack deployment
 	AutoUpdateSettings struct {
 		// Auto update interval
+		// Deprecated: polling interval now lives on the associated Source (Source.Interval).
+		// Kept for DB backwards-compatibility only; new code must not read or write this field.
 		Interval string `example:"1m30s"`
 		// A UUID generated from client
 		Webhook string `example:"05de31a2-79fa-4644-9c12-faa67e5c49f0"`
@@ -667,6 +669,26 @@ type (
 		Charts          []PolicyChartSummary `json:"charts"`
 		Bundles         []PolicyChartBundle  `json:"bundles,omitempty"`
 		RestoreSettings *RestoreSettings     `json:"restoreSettings,omitempty"`
+	}
+
+	// ResourcePatchConfig is the Config payload for resource-patch-k8s PolicyDesiredState entries:
+	// a policy-agnostic set of field patches the agent applies authoritatively and reverses on detach.
+	ResourcePatchConfig struct {
+		Patches []ResourcePatchOperation `json:"patches"`
+	}
+
+	// ResourcePatchOperation is the patcher operation details for the agent to apply.
+	ResourcePatchOperation struct {
+		APIVersion       string                     `json:"apiVersion"`
+		Kind             string                     `json:"kind"`
+		Resource         string                     `json:"resource"`
+		Name             string                     `json:"name"`
+		Namespace        string                     `json:"namespace,omitempty"`
+		FieldPath        []string                   `json:"fieldPath"`
+		Values           map[string]json.RawMessage `json:"values"`
+		OwnedKeyPrefixes []string                   `json:"ownedKeyPrefixes"`
+		Exclusive        bool                       `json:"exclusive,omitempty"`
+		CreateIfMissing  bool                       `json:"createIfMissing,omitempty"`
 	}
 
 	// PolicyType represents the type of policy
@@ -1336,6 +1358,7 @@ type (
 		OwnerID            UserID       `json:"ownerID,omitempty"`
 		Status             SourceStatus `json:"status,omitempty"`
 		StatusError        string       `json:"statusError,omitempty"`
+		Interval           string       `json:"interval,omitempty" example:"5m"`
 	}
 
 	SourceStatus int
@@ -1964,6 +1987,8 @@ type (
 		RemoveImagePullSecretFromServiceAccount(namespace, serviceAccountName, secretName string) error
 		UpdateServiceAccountImagePullSecrets(namespace, name string, secretNames []string) error
 		SetupUserServiceAccount(int, []int, bool) error
+		RemoveUserServiceAccountBindings(userID int) error
+		RemoveUserServiceAccount(userID int) error
 		GetPortainerUserServiceAccount(tokendata *TokenData) (*corev1.ServiceAccount, error)
 		GetServiceAccountBearerToken(userID int) (string, error)
 
@@ -2694,6 +2719,8 @@ const (
 	PodSecurityStandardsK8s PolicyType = "pod-security-standards-k8s"
 	NetworkSecurityK8s      PolicyType = "network-security-k8s"
 )
+
+const ResourcePatchAgentType = "resource-patch-k8s"
 
 type HelmInstallStatus string
 

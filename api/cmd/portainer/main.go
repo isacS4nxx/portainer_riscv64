@@ -27,6 +27,7 @@ import (
 	"github.com/portainer/portainer/api/exec"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/git"
+	"github.com/portainer/portainer/api/gitops/scheduling"
 	"github.com/portainer/portainer/api/http"
 	"github.com/portainer/portainer/api/http/proxy"
 	kubeproxy "github.com/portainer/portainer/api/http/proxy/factory/kubernetes"
@@ -251,9 +252,7 @@ func resolveSetupToken(tx dataservices.DataStoreTx, providedToken string) (strin
 		return "", err
 	}
 
-	log.Info().
-		Str("setup_token", token).
-		Msg("no administrator account configured; admin initialization and backup restore require this setup token in the X-Setup-Token header. Start with --no-setup-token to disable.")
+	setuptoken.LogToken(token)
 
 	return token, nil
 }
@@ -447,7 +446,7 @@ func buildServer(flags *portainer.CLIFlags, shutdownCtx context.Context, shutdow
 
 	signatureService := initDigitalSignatureService()
 
-	edgeStacksService := edgestacks.NewService(dataStore)
+	edgeStacksService := edgestacks.NewService(dataStore, fileService)
 
 	sslService, err := initSSLService(*flags.AddrHTTPS, *flags.TLSCert, *flags.TLSKey, fileService, dataStore, shutdownTrigger)
 	if err != nil {
@@ -571,10 +570,15 @@ func buildServer(flags *portainer.CLIFlags, shutdownCtx context.Context, shutdow
 		log.Fatal().Err(err).Msg("failed starting tunnel server")
 	}
 
-	scheduler := scheduler.NewScheduler(shutdownCtx)
+	sched := scheduler.NewScheduler(shutdownCtx)
 	stackDeployer := deployments.NewStackDeployer(swarmStackManager, composeStackManager, kubernetesDeployer, dockerClientFactory, dataStore)
-	if err := deployments.StartStackSchedules(scheduler, stackDeployer, dataStore, gitService); err != nil {
-		log.Fatal().Err(err).Msg("failed to start stack scheduler")
+	sourceScheduler := scheduling.NewSourceScheduler(sched, dataStore, scheduling.Deployers{
+		Stack: func(ctx context.Context, stackID portainer.StackID) error {
+			return deployments.RedeployWhenChanged(ctx, stackID, stackDeployer, dataStore, gitService)
+		},
+	})
+	if err := sourceScheduler.ReconcileAll(); err != nil {
+		log.Fatal().Err(err).Msg("failed to start source scheduler")
 	}
 
 	sslDBSettings, err := dataStore.SSLSettings().Settings()
@@ -649,7 +653,7 @@ func buildServer(flags *portainer.CLIFlags, shutdownCtx context.Context, shutdow
 		SSLService:                  sslService,
 		DockerClientFactory:         dockerClientFactory,
 		KubernetesClientFactory:     kubernetesClientFactory,
-		Scheduler:                   scheduler,
+		SourceScheduler:             sourceScheduler,
 		ShutdownTrigger:             shutdownTrigger,
 		StackDeployer:               stackDeployer,
 		UpgradeService:              upgradeService,
