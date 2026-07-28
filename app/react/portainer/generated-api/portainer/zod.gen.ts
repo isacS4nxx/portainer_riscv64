@@ -247,6 +247,7 @@ export const zGitopsRepositoryFilePreviewPayload = z.object({
 
 export const zGittypesGitAuthentication = z.object({
   AuthorizationType: z.int().optional(),
+  GitCredentialID: z.int().optional(),
   Password: z.string().optional(),
   Provider: z.int().optional(),
   Username: z.string().optional(),
@@ -439,6 +440,7 @@ export const zKubernetesK8sIngressPath = z.object({
   Path: z.string().optional(),
   PathType: z.string().optional(),
   Port: z.int().optional(),
+  PortName: z.string().optional(),
   ServiceName: z.string().optional(),
 });
 
@@ -1412,6 +1414,7 @@ export const zPortainerTag = z.object({
 });
 
 export const zPortainerTeam = z.object({
+  DenyPortainerAccess: z.boolean().optional(),
   Id: z.int().optional(),
   Name: z.string().optional(),
 });
@@ -2024,11 +2027,6 @@ export const zSettingsSettingsUpdatePayload = z.object({
   TemplatesURL: z.string().optional(),
   TrustOnFirstConnect: z.boolean().optional(),
   UserSessionTimeout: z.string().optional(),
-});
-
-export const zSourcesAutoUpdateInfo = z.object({
-  fetchInterval: z.string().optional(),
-  mechanism: z.string().optional(),
 });
 
 export const zSourcesConnectionTestResult = z.object({
@@ -3346,6 +3344,19 @@ export const zSourcesSource = z.object({
   usedBy: z.int().optional(),
 });
 
+export const zSourcesSourceDetail = z.object({
+  access: zSourcesSourceAccess.optional(),
+  connection: zSourcesConnectionInfo,
+  error: z.string().optional(),
+  id: z.int(),
+  interval: z.string().optional(),
+  lastSync: z.int().optional(),
+  name: z.string(),
+  status: zWorkflowsStatus,
+  type: zSourcesSourceType,
+  url: z.string(),
+});
+
 export const zWorkflowsStatusSummary = z.object({
   error: z.int().optional(),
   healthy: z.int().optional(),
@@ -3375,21 +3386,7 @@ export const zWorkflowsWorkflowStatusObject = z.object({
   target: zWorkflowsWorkflowPhaseStatus.optional(),
 });
 
-export const zWorkflowsArtifactDetail = z.object({
-  autoUpdate: zPortainerAutoUpdateSettings.optional(),
-  creationDate: z.int().optional(),
-  files: z.array(zWorkflowsArtifactFileDetail).optional(),
-  id: z.int(),
-  lastSyncDate: z.int().optional(),
-  name: z.string(),
-  platform: zWorkflowsDeploymentPlatform.optional(),
-  status: zWorkflowsWorkflowStatusObject.optional(),
-  target: zWorkflowsTarget.optional(),
-  type: zWorkflowsType,
-});
-
-export const zWorkflowsSourceWorkflow = z.object({
-  autoUpdate: zPortainerAutoUpdateSettings.optional(),
+export const zSourcesWorkflow = z.object({
   creationDate: z.int().optional(),
   gitConfig: zGittypesRepoConfig.optional(),
   id: z.int(),
@@ -3402,21 +3399,17 @@ export const zWorkflowsSourceWorkflow = z.object({
   type: zWorkflowsType,
 });
 
-export const zSourcesSourceDetail = z.object({
-  access: zSourcesSourceAccess.optional(),
-  autoUpdate: zSourcesAutoUpdateInfo.optional(),
-  connection: zSourcesConnectionInfo,
-  environments: z.int().optional(),
-  error: z.string().optional(),
+export const zWorkflowsArtifactDetail = z.object({
+  autoUpdate: zPortainerAutoUpdateSettings.optional(),
+  creationDate: z.int().optional(),
+  files: z.array(zWorkflowsArtifactFileDetail).optional(),
   id: z.int(),
-  interval: z.string().optional(),
-  lastSync: z.int().optional(),
+  lastSyncDate: z.int().optional(),
   name: z.string(),
-  status: zWorkflowsStatus,
-  type: zSourcesSourceType,
-  url: z.string(),
-  usedBy: z.int().optional(),
-  workflows: z.array(zWorkflowsSourceWorkflow).optional(),
+  platform: zWorkflowsDeploymentPlatform.optional(),
+  status: zWorkflowsWorkflowStatusObject.optional(),
+  target: zWorkflowsTarget.optional(),
+  type: zWorkflowsType,
 });
 
 export const zWorkflowsWorkflow = z.object({
@@ -4435,6 +4428,15 @@ export const zGitOpsSourcesTestByIdPath = z.object({
  * Connection test result
  */
 export const zGitOpsSourcesTestByIdResponse = zSourcesConnectionTestResult;
+
+export const zGitOpsSourceWorkflowsListPath = z.object({
+  id: z.int(),
+});
+
+/**
+ * OK
+ */
+export const zGitOpsSourceWorkflowsListResponse = z.array(zSourcesWorkflow);
 
 /**
  * Git source details

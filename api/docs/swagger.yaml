@@ -1341,6 +1341,9 @@ definitions:
     properties:
       AuthorizationType:
         type: integer
+      GitCredentialID:
+        example: 0
+        type: integer
       Password:
         type: string
       Provider:
@@ -1930,6 +1933,8 @@ definitions:
         type: string
       Port:
         type: integer
+      PortName:
+        type: string
       ServiceName:
         type: string
     type: object
@@ -4538,6 +4543,11 @@ definitions:
     type: object
   portainer.Team:
     properties:
+      DenyPortainerAccess:
+        description: Whether members of this team are denied access to Portainer itself
+          (EE only)
+        example: false
+        type: boolean
       Id:
         description: Team Identifier
         example: 1
@@ -5651,13 +5661,6 @@ definitions:
         example: 5m
         type: string
     type: object
-  sources.AutoUpdateInfo:
-    properties:
-      fetchInterval:
-        type: string
-      mechanism:
-        type: string
-    type: object
   sources.ConnectionTestResult:
     properties:
       error:
@@ -5781,12 +5784,8 @@ definitions:
     properties:
       access:
         $ref: '#/definitions/sources.SourceAccess'
-      autoUpdate:
-        $ref: '#/definitions/sources.AutoUpdateInfo'
       connection:
         $ref: '#/definitions/sources.connectionInfo'
-      environments:
-        type: integer
       error:
         type: string
       id:
@@ -5804,12 +5803,6 @@ definitions:
         $ref: '#/definitions/sources.SourceType'
       url:
         type: string
-      usedBy:
-        type: integer
-      workflows:
-        items:
-          $ref: '#/definitions/workflows.SourceWorkflow'
-        type: array
     required:
     - connection
     - id
@@ -5838,6 +5831,36 @@ definitions:
     - SourceStatusUnknown
     - SourceStatusHealthy
     - SourceStatusError
+  sources.Workflow:
+    properties:
+      creationDate:
+        type: integer
+      gitConfig:
+        $ref: '#/definitions/gittypes.RepoConfig'
+      id:
+        type: integer
+      lastSyncDate:
+        type: integer
+      name:
+        type: string
+      platform:
+        $ref: '#/definitions/workflows.DeploymentPlatform'
+      sourceId:
+        type: integer
+      status:
+        $ref: '#/definitions/workflows.WorkflowStatusObject'
+      target:
+        $ref: '#/definitions/workflows.Target'
+      type:
+        $ref: '#/definitions/workflows.Type'
+    required:
+    - id
+    - name
+    - platform
+    - status
+    - target
+    - type
+    type: object
   sources.connectionInfo:
     properties:
       authentication:
@@ -9658,38 +9681,6 @@ definitions:
     - DeploymentPlatformDockerStandalone
     - DeploymentPlatformDockerSwarm
     - DeploymentPlatformKubernetes
-  workflows.SourceWorkflow:
-    properties:
-      autoUpdate:
-        $ref: '#/definitions/portainer.AutoUpdateSettings'
-      creationDate:
-        type: integer
-      gitConfig:
-        $ref: '#/definitions/gittypes.RepoConfig'
-      id:
-        type: integer
-      lastSyncDate:
-        type: integer
-      name:
-        type: string
-      platform:
-        $ref: '#/definitions/workflows.DeploymentPlatform'
-      sourceId:
-        type: integer
-      status:
-        $ref: '#/definitions/workflows.WorkflowStatusObject'
-      target:
-        $ref: '#/definitions/workflows.Target'
-      type:
-        $ref: '#/definitions/workflows.Type'
-    required:
-    - id
-    - name
-    - platform
-    - status
-    - target
-    - type
-    type: object
   workflows.Status:
     enum:
     - healthy
@@ -9850,7 +9841,7 @@ info:
     name: zlib
     url: https://github.com/portainer/portainer/blob/develop/LICENSE
   title: PortainerCE API
-  version: 2.43.0
+  version: 2.44.0
 paths:
   /auth:
     post:
@@ -12850,7 +12841,7 @@ paths:
       - gitops
     get:
       description: |-
-        Returns a single GitOps source with its connection settings and linked workflows.
+        Returns a single GitOps source with its connection settings and access rules.
         **Access policy**: authenticated
       operationId: GitOpsSourceGet
       parameters:
@@ -13002,6 +12993,41 @@ paths:
       - ApiKeyAuth: []
       - jwt: []
       summary: Test the connection of a stored source
+      tags:
+      - gitops
+  /gitops/sources/{id}/workflows:
+    get:
+      description: |-
+        Returns the workflows (stacks or edge stacks) currently deployed from this source.
+        **Access policy**: authenticated
+      operationId: GitOpsSourceWorkflowsList
+      parameters:
+      - description: Source identifier
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/sources.Workflow'
+            type: array
+        "400":
+          description: Invalid request
+        "403":
+          description: Access denied
+        "404":
+          description: Source not found
+        "500":
+          description: Server error
+      security:
+      - ApiKeyAuth: []
+      - jwt: []
+      summary: List the workflows using a GitOps source
       tags:
       - gitops
   /gitops/sources/git:

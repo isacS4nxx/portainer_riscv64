@@ -812,6 +812,7 @@ export type GitopsRepositoryFilePreviewPayload = {
 
 export type GittypesGitAuthentication = {
   AuthorizationType?: number;
+  GitCredentialID?: number;
   Password?: string;
   Provider?: number;
   Username?: string;
@@ -1234,6 +1235,7 @@ export type KubernetesK8sIngressPath = {
   Path?: string;
   PathType?: string;
   Port?: number;
+  PortName?: string;
   ServiceName?: string;
 };
 
@@ -3368,6 +3370,10 @@ export type PortainerTag = {
 
 export type PortainerTeam = {
   /**
+   * Whether members of this team are denied access to Portainer itself (EE only)
+   */
+  DenyPortainerAccess?: boolean;
+  /**
    * Team Identifier
    */
   Id?: number;
@@ -4353,11 +4359,6 @@ export type SettingsSettingsUpdatePayload = {
   UserSessionTimeout?: string;
 };
 
-export type SourcesAutoUpdateInfo = {
-  fetchInterval?: string;
-  mechanism?: string;
-};
-
 export type SourcesConnectionTestResult = {
   error?: string;
   success?: boolean;
@@ -4420,9 +4421,7 @@ export type SourcesSourceAccessUpdatePayload = {
 
 export type SourcesSourceDetail = {
   access?: SourcesSourceAccess;
-  autoUpdate?: SourcesAutoUpdateInfo;
   connection: SourcesConnectionInfo;
-  environments?: number;
   error?: string;
   id: number;
   interval?: string;
@@ -4431,8 +4430,6 @@ export type SourcesSourceDetail = {
   status: WorkflowsStatus;
   type: SourcesSourceType;
   url: string;
-  usedBy?: number;
-  workflows?: Array<WorkflowsSourceWorkflow>;
 };
 
 export const SourcesSourceType = {
@@ -4469,6 +4466,19 @@ export const SourcesStatus = {
 } as const;
 
 export type SourcesStatus = (typeof SourcesStatus)[keyof typeof SourcesStatus];
+
+export type SourcesWorkflow = {
+  creationDate?: number;
+  gitConfig?: GittypesRepoConfig;
+  id: number;
+  lastSyncDate?: number;
+  name: string;
+  platform: WorkflowsDeploymentPlatform;
+  sourceId?: number;
+  status: WorkflowsWorkflowStatusObject;
+  target: WorkflowsTarget;
+  type: WorkflowsType;
+};
 
 export type SourcesConnectionInfo = {
   authentication?: SourcesGitAuthInfo;
@@ -8311,20 +8321,6 @@ export const WorkflowsDeploymentPlatform = {
 export type WorkflowsDeploymentPlatform =
   (typeof WorkflowsDeploymentPlatform)[keyof typeof WorkflowsDeploymentPlatform];
 
-export type WorkflowsSourceWorkflow = {
-  autoUpdate?: PortainerAutoUpdateSettings;
-  creationDate?: number;
-  gitConfig?: GittypesRepoConfig;
-  id: number;
-  lastSyncDate?: number;
-  name: string;
-  platform: WorkflowsDeploymentPlatform;
-  sourceId?: number;
-  status: WorkflowsWorkflowStatusObject;
-  target: WorkflowsTarget;
-  type: WorkflowsType;
-};
-
 export const WorkflowsStatus = {
   /**
    * StatusHealthy
@@ -11752,6 +11748,47 @@ export type GitOpsSourcesTestByIdResponses = {
 
 export type GitOpsSourcesTestByIdResponse =
   GitOpsSourcesTestByIdResponses[keyof GitOpsSourcesTestByIdResponses];
+
+export type GitOpsSourceWorkflowsListData = {
+  body?: never;
+  path: {
+    /**
+     * Source identifier
+     */
+    id: number;
+  };
+  query?: never;
+  url: '/gitops/sources/{id}/workflows';
+};
+
+export type GitOpsSourceWorkflowsListErrors = {
+  /**
+   * Invalid request
+   */
+  400: unknown;
+  /**
+   * Access denied
+   */
+  403: unknown;
+  /**
+   * Source not found
+   */
+  404: unknown;
+  /**
+   * Server error
+   */
+  500: unknown;
+};
+
+export type GitOpsSourceWorkflowsListResponses = {
+  /**
+   * OK
+   */
+  200: Array<SourcesWorkflow>;
+};
+
+export type GitOpsSourceWorkflowsListResponse =
+  GitOpsSourceWorkflowsListResponses[keyof GitOpsSourceWorkflowsListResponses];
 
 export type GitOpsSourcesCreateGitData = {
   /**

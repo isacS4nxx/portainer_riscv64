@@ -1398,6 +1398,8 @@ type (
 		ID TeamID `json:"Id" example:"1"`
 		// Team name
 		Name string `json:"Name" example:"developers"`
+		// Whether members of this team are denied access to Portainer itself (EE only)
+		DenyPortainerAccess bool `json:"DenyPortainerAccess" example:"false"`
 	}
 
 	// TeamAccessPolicies represent the association of an access policy and a team
@@ -2089,7 +2091,7 @@ type (
 
 const (
 	// APIVersion is the version number of the Portainer API
-	APIVersion = "2.43.0"
+	APIVersion = "2.44.0"
 	// Support annotation for the API version ("STS" for Short-Term Support or "LTS" for Long-Term Support)
 	APIVersionSupport = "STS"
 	// Edition is what this edition of Portainer is called
