@@ -275,6 +275,8 @@ func updateSettingsFromFlags(dataStore dataservices.DataStore, flags *portainer.
 	settings.SnapshotInterval = cmp.Or(*flags.SnapshotInterval, settings.SnapshotInterval)
 	settings.LogoURL = cmp.Or(*flags.Logo, settings.LogoURL)
 	settings.EnableEdgeComputeFeatures = cmp.Or(*flags.EnableEdgeComputeFeatures, settings.EnableEdgeComputeFeatures)
+	settings.EdgePortainerURL = cmp.Or(*flags.EdgePortainerURL, settings.EdgePortainerURL)
+	settings.TrustOnFirstConnect = cmp.Or(*flags.EdgeTrustOnFirstConnect, settings.TrustOnFirstConnect)
 	settings.TemplatesURL = cmp.Or(*flags.Templates, settings.TemplatesURL)
 
 	if flags.KubectlShellImageSet {
@@ -349,7 +351,7 @@ func dbSecretPath(keyFilenameFlag string) string {
 	if path.IsAbs(keyFilenameFlag) {
 		return keyFilenameFlag
 	}
-	return path.Join("/run/secrets", keyFilenameFlag)
+	return filesystem.JoinPaths("/run/secrets", keyFilenameFlag)
 }
 
 func loadEncryptionSecretKey(keyfilename string) []byte {
@@ -577,6 +579,15 @@ func buildServer(flags *portainer.CLIFlags, shutdownCtx context.Context, shutdow
 	sourceScheduler := scheduling.NewSourceScheduler(sched, dataStore, scheduling.Deployers{
 		Stack: func(ctx context.Context, stackID portainer.StackID) error {
 			return deployments.RedeployWhenChanged(ctx, stackID, stackDeployer, dataStore, gitService)
+		},
+		StackExists: dataStore.Stack().Exists,
+		EdgeStackExists: func(edgeStackID portainer.EdgeStackID) (bool, error) {
+			_, err := dataStore.EdgeStack().EdgeStack(edgeStackID)
+			if dataservices.IsErrObjectNotFound(err) {
+				return false, nil
+			}
+
+			return err == nil, err
 		},
 	})
 	if err := sourceScheduler.ReconcileAll(); err != nil {

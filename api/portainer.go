@@ -21,9 +21,11 @@ import (
 	"github.com/docker/docker/api/types/volume"
 	"github.com/segmentio/encoding/json"
 	"golang.org/x/oauth2"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/tools/remotecommand"
+	metricsv "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 type (
@@ -116,6 +118,8 @@ type (
 		TrustedOrigins            *string
 		NoSetupToken              *bool
 		SetupToken                *string
+		EdgePortainerURL          *string
+		EdgeTrustOnFirstConnect   *bool
 	}
 
 	// CustomTemplateVariableDefinition
@@ -1885,6 +1889,7 @@ type (
 		SetIsKubeAdmin(isKubeAdmin bool)
 		GetClientNonAdminNamespaces() []string
 		SetClientNonAdminNamespaces([]string)
+		GetMetricsClient() metricsv.Interface
 		NamespaceAccessPoliciesDeleteNamespace(ns string) error
 		UpdateNamespaceAccessPolicies(accessPolicies map[string]K8sNamespaceAccessPolicy) error
 		GetNamespaceAccessPolicies() (map[string]K8sNamespaceAccessPolicy, error)
@@ -1901,6 +1906,9 @@ type (
 
 		// ConfigMap
 		GetConfigMap(namespace, configMapName string) (models.K8sConfigMap, error)
+		CreateConfigMap(namespace string, request models.K8sConfigMapWriteRequest) (models.K8sConfigMap, error)
+		UpdateConfigMap(namespace string, request models.K8sConfigMapWriteRequest) (models.K8sConfigMap, error)
+		DeleteConfigMap(namespace, name string) error
 		CombineConfigMapWithApplications(configMap models.K8sConfigMap) (models.K8sConfigMap, error)
 
 		// CronJob
@@ -1924,6 +1932,7 @@ type (
 		HasStackName(namespace string, stackName string) (bool, error)
 
 		// Ingress
+		GetIngressClasses() ([]models.K8sIngressClass, error)
 		GetIngressControllers() (models.K8sIngressControllers, error)
 		GetIngress(namespace, ingressName string) (models.K8sIngressInfo, error)
 		GetIngresses(namespace string) ([]models.K8sIngressInfo, error)
@@ -1956,10 +1965,28 @@ type (
 		GetMaxResourceLimits(skipNamespace string, overCommitEnabled bool, resourceOverCommitPercent int) (K8sNodeLimits, error)
 
 		// Pod
+		GetPods(namespace string, opts models.K8sResourceListOptions) ([]corev1.Pod, error)
+		GetPodLogsStream(ctx context.Context, namespace, podName string, opts corev1.PodLogOptions) (io.ReadCloser, error)
 		CreateUserShellPod(ctx context.Context, serviceAccountName, shellPodImage string) (*KubernetesShellPod, error)
 		DeletePod(namespace, name string) error
 		RestartPod(namespace, name string) error
 		SupportsPodRestart(ctx context.Context) (bool, error)
+
+		// ReplicaSet
+		GetReplicaSets(namespace, ownerDeployment string, opts models.K8sResourceListOptions) ([]appsv1.ReplicaSet, error)
+
+		// Deployment
+		GetDeployment(namespace, name string) (*appsv1.Deployment, error)
+		GetDeployments(namespace string, opts models.K8sResourceListOptions) ([]appsv1.Deployment, error)
+		CreateDeployment(namespace string, request models.K8sDeploymentWriteRequest) (*appsv1.Deployment, error)
+		UpdateDeployment(namespace string, request models.K8sDeploymentWriteRequest) (*appsv1.Deployment, error)
+		ScaleDeployment(namespace, name string, replicas int32) (*appsv1.Deployment, error)
+		PatchDeployment(namespace, name string, request models.K8sDeploymentPatchRequest) (*appsv1.Deployment, error)
+		RolloutUndo(namespace, name string, revision int64) (*appsv1.Deployment, error)
+		DeleteDeployment(namespace, name string) error
+
+		// ResourceQuota
+		GetResourceQuotas(namespace string) (*[]corev1.ResourceQuota, error)
 
 		// RBAC
 		IsRBACEnabled() (bool, error)
@@ -1979,6 +2006,9 @@ type (
 		// Secret
 		GetSecrets(namespace string) ([]models.K8sSecret, error)
 		GetSecret(namespace string, secretName string) (models.K8sSecret, error)
+		CreateSecret(namespace string, request models.K8sSecretWriteRequest) (models.K8sSecret, error)
+		UpdateSecret(namespace string, request models.K8sSecretWriteRequest) (models.K8sSecret, error)
+		DeleteSecret(namespace, name string) error
 		CombineSecretWithApplications(secret models.K8sSecret) (models.K8sSecret, error)
 
 		// ServiceAccount
@@ -1996,7 +2026,7 @@ type (
 
 		// Service
 		GetServices(namespace string) ([]models.K8sServiceInfo, error)
-		CombineServicesWithApplications(services []models.K8sServiceInfo) ([]models.K8sServiceInfo, error)
+		CombineServicesWithApplications(namespace string, services []models.K8sServiceInfo) ([]models.K8sServiceInfo, error)
 		CreateService(namespace string, info models.K8sServiceInfo) error
 		DeleteServices(reqs models.K8sServiceDeleteRequests) error
 		UpdateService(namespace string, info models.K8sServiceInfo) error
@@ -2027,6 +2057,7 @@ type (
 		// PersistentVolumeClaim
 		GetPersistentVolumeClaims(namespace string) ([]models.K8sPersistentVolumeClaim, error)
 		GetPersistentVolumeClaim(namespace, name string) (*models.K8sPersistentVolumeClaim, error)
+		CreatePersistentVolumeClaim(namespace string, request models.K8sPersistentVolumeClaimCreateRequest) (*models.K8sPersistentVolumeClaim, error)
 		DeletePersistentVolumeClaims(reqs models.K8sVolumeDeleteRequests) error
 		ResizePersistentVolumeClaim(namespace, name, newSize string) error
 	}
@@ -2092,9 +2123,9 @@ type (
 
 const (
 	// APIVersion is the version number of the Portainer API
-	APIVersion = "2.44.0"
+	APIVersion = "2.45.0"
 	// Support annotation for the API version ("STS" for Short-Term Support or "LTS" for Long-Term Support)
-	APIVersionSupport = "STS"
+	APIVersionSupport = "LTS"
 	// Edition is what this edition of Portainer is called
 	Edition = PortainerCE
 	// ComposeSyntaxMaxVersion is a maximum supported version of the docker compose syntax
@@ -2173,6 +2204,12 @@ const (
 	SetupTokenEnvVar = "PORTAINER_SETUP_TOKEN"
 	// CSRFAllowNoOriginEnvVar is the environment variable used to allow unsafe cookie-authenticated requests that carry no Origin or Sec-Fetch-Site header, reverting the CSRF protection to fail open for such requests
 	CSRFAllowNoOriginEnvVar = "CSRF_ALLOW_NO_ORIGIN"
+	// EdgeComputeEnvVar is the environment variable used to enable Edge Compute features
+	EdgeComputeEnvVar = "EDGE_COMPUTE"
+	// EdgePortainerURLEnvVar is the environment variable used to set the URL that edge agents connect back to
+	EdgePortainerURLEnvVar = "EDGE_PORTAINER_URL"
+	// EdgeTrustOnFirstConnectEnvVar is the environment variable used to auto-trust edge agents on first connect
+	EdgeTrustOnFirstConnectEnvVar = "EDGE_TRUST_ON_FIRST_CONNECT"
 )
 
 // List of supported features

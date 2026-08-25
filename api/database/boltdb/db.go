@@ -9,12 +9,12 @@ import (
 	"io"
 	"math"
 	"os"
-	"path"
 	"strconv"
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
 	dserrors "github.com/portainer/portainer/api/dataservices/errors"
+	"github.com/portainer/portainer/api/filesystem"
 
 	"github.com/rs/zerolog/log"
 	bolt "go.etcd.io/bbolt"
@@ -59,10 +59,10 @@ func (connection *DbConnection) GetDatabaseFileName() string {
 // GetDataseFilePath get the path + filename for the database file
 func (connection *DbConnection) GetDatabaseFilePath() string {
 	if connection.IsEncryptedStore() {
-		return path.Join(connection.Path, EncryptedDatabaseFileName)
+		return filesystem.JoinPaths(connection.Path, EncryptedDatabaseFileName)
 	}
 
-	return path.Join(connection.Path, DatabaseFileName)
+	return filesystem.JoinPaths(connection.Path, DatabaseFileName)
 }
 
 // GetStorePath get the filename and path for the database file
@@ -130,12 +130,12 @@ func (connection *DbConnection) NeedsEncryptionMigration() (bool, error) {
 	}
 
 	// Check for portainer.db
-	dbFile := path.Join(connection.Path, DatabaseFileName)
+	dbFile := filesystem.JoinPaths(connection.Path, DatabaseFileName)
 	_, err := os.Stat(dbFile)
 	haveDbFile := err == nil
 
 	// Check for portainer.edb
-	edbFile := path.Join(connection.Path, EncryptedDatabaseFileName)
+	edbFile := filesystem.JoinPaths(connection.Path, EncryptedDatabaseFileName)
 	_, err = os.Stat(edbFile)
 	haveEdbFile := err == nil
 
@@ -213,11 +213,25 @@ func (connection *DbConnection) txFn(fn func(portainer.Transaction) error) func(
 
 // UpdateTx executes the given function inside a read-write transaction
 func (connection *DbConnection) UpdateTx(fn func(portainer.Transaction) error) error {
-	if connection.MaxBatchDelay > 0 && connection.MaxBatchSize > 1 {
+	return connection.Update(connection.txFn(fn))
+}
+
+// UpdateTxBatch executes the given function inside a read-write transaction, coalescing
+// concurrent callers into a single physical commit when batching is configured
+// (MaxBatchSize/MaxBatchDelay). Falls back to a plain UpdateTx when it isn't.
+func (connection *DbConnection) UpdateTxBatch(fn func(portainer.Transaction) error) error {
+	if connection.BatchingEnabled() {
 		return connection.Batch(connection.txFn(fn))
 	}
 
 	return connection.Update(connection.txFn(fn))
+}
+
+// BatchingEnabled reports whether MaxBatchSize/MaxBatchDelay are configured, i.e.
+// whether UpdateTxBatch will coalesce concurrent callers instead of falling back to a
+// plain Update per call.
+func (connection *DbConnection) BatchingEnabled() bool {
+	return connection.MaxBatchDelay > 0 && connection.MaxBatchSize > 1
 }
 
 // ViewTx executes the given function inside a read-only transaction

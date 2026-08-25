@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/docker"
 	"github.com/portainer/portainer/api/http/proxy/factory/utils"
 	"github.com/portainer/portainer/api/internal/authorization"
 	"github.com/portainer/portainer/api/logs"
@@ -28,19 +29,12 @@ type partialServiceSpec struct {
 				Seccomp  *struct{ Mode string } `json:"Seccomp"`
 				AppArmor *struct{ Mode string } `json:"AppArmor"`
 			} `json:"Privileges"`
-			Mounts []struct {
-				Type          string `json:"Type"`
-				VolumeOptions *struct {
-					DriverConfig *struct {
-						Options map[string]string `json:"Options"`
-					} `json:"DriverConfig"`
-				} `json:"VolumeOptions"`
-			} `json:"Mounts"`
+			Mounts []PartialMount `json:"Mounts"`
 		} `json:"ContainerSpec"`
 	} `json:"TaskTemplate"`
 }
 
-func CheckServiceBodyRestrictions(request *http.Request, securitySettings *portainer.EndpointSecuritySettings) error {
+func CheckServiceBodyRestrictions(request *http.Request, securitySettings *portainer.EndpointSecuritySettings, getClient func(nodeName string) (*client.Client, error)) error {
 	defer logs.CloseAndLogErr(request.Body)
 
 	body, err := io.ReadAll(request.Body)
@@ -70,15 +64,32 @@ func CheckServiceBodyRestrictions(request *http.Request, securitySettings *porta
 	}
 
 	if !securitySettings.AllowBindMountsForRegularUsers {
+		var referencedVolumes []string
+
 		for _, mount := range containerSpec.Mounts {
-			if mount.Type == "bind" {
+			descriptor := docker.MountDescriptor{Type: mount.Type}
+			if mount.VolumeOptions != nil && mount.VolumeOptions.DriverConfig != nil {
+				descriptor.Driver = mount.VolumeOptions.DriverConfig.Name
+				descriptor.DriverOpts = mount.VolumeOptions.DriverConfig.Options
+			}
+
+			if docker.IsBindMount(descriptor) {
 				return ErrBindMountsForbidden
 			}
 
-			if mount.VolumeOptions != nil && mount.VolumeOptions.DriverConfig != nil {
-				if mount.VolumeOptions.DriverConfig.Options["type"] == "bind" {
-					return ErrBindMountsForbidden
-				}
+			if mount.Source != "" {
+				referencedVolumes = append(referencedVolumes, mount.Source)
+			}
+		}
+
+		if len(referencedVolumes) > 0 {
+			isBind, err := anyClusterNodeHasBindMountVolume(request.Context(), getClient, referencedVolumes)
+			if err != nil {
+				return err
+			}
+
+			if isBind {
+				return ErrBindMountsForbidden
 			}
 		}
 	}
@@ -86,6 +97,45 @@ func CheckServiceBodyRestrictions(request *http.Request, securitySettings *porta
 	request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	return nil
+}
+
+func anyClusterNodeHasBindMountVolume(ctx context.Context, getClient func(nodeName string) (*client.Client, error), volumeNames []string) (bool, error) {
+	cli, err := getClient("")
+	if err != nil {
+		return false, err
+	}
+	defer logs.CloseAndLogErr(cli)
+
+	nodes, err := cli.NodeList(ctx, swarm.NodeListOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	nodeClients := make([]*client.Client, 0, len(nodes))
+	for _, node := range nodes {
+		nodeClient, err := getClient(node.Description.Hostname)
+		if err != nil {
+			return false, err
+		}
+
+		defer logs.CloseAndLogErr(nodeClient)
+		nodeClients = append(nodeClients, nodeClient)
+	}
+
+	for _, name := range volumeNames {
+		for _, nodeClient := range nodeClients {
+			isBind, err := docker.InspectVolumeIsBindMount(ctx, nodeClient, name)
+			if err != nil {
+				return false, err
+			}
+
+			if isBind {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func getInheritedResourceControlFromServiceLabels(dockerClient *client.Client, endpointID portainer.EndpointID, serviceID string, resourceControls []portainer.ResourceControl) (*portainer.ResourceControl, error) {
@@ -174,7 +224,11 @@ func (transport *Transport) decorateServiceCreationOperation(request *http.Reque
 		return nil, err
 	}
 
-	if err := CheckServiceBodyRestrictions(request, securitySettings); err != nil {
+	getClient := func(nodeName string) (*client.Client, error) {
+		return transport.dockerClientFactory.CreateClient(transport.endpoint, nodeName, nil)
+	}
+
+	if err := CheckServiceBodyRestrictions(request, securitySettings, getClient); err != nil {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
 			Body:       io.NopCloser(bytes.NewBufferString("Access denied: insufficient permissions to create service with specified configuration")),
@@ -203,7 +257,11 @@ func (transport *Transport) decorateServiceUpdateOperation(request *http.Request
 		return nil, err
 	}
 
-	if err := CheckServiceBodyRestrictions(request, securitySettings); err != nil {
+	getClient := func(nodeName string) (*client.Client, error) {
+		return transport.dockerClientFactory.CreateClient(transport.endpoint, nodeName, nil)
+	}
+
+	if err := CheckServiceBodyRestrictions(request, securitySettings, getClient); err != nil {
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
 			Body:       io.NopCloser(bytes.NewBufferString("Access denied: insufficient permissions to update service with specified configuration")),

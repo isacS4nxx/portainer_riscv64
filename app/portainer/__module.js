@@ -242,7 +242,7 @@ angular
 
       var group = {
         name: 'portainer.groups.group',
-        url: '/:id',
+        url: '/:id?tab',
         views: {
           'content@': {
             component: 'environmentGroupEditView',
@@ -317,10 +317,7 @@ angular
 
       var gitopsWorkflowDetail = {
         name: 'portainer.gitops.workflows.item',
-        url: '/:workflowId?tab',
-        params: {
-          tab: filterParam('overview'),
-        },
+        url: '/:workflowId',
         views: {
           'content@': {
             component: 'workflowItemView',
@@ -388,6 +385,16 @@ angular
           'content@': {
             templateUrl: './views/init/admin/initAdmin.html',
             controller: 'InitAdminController',
+          },
+        },
+      };
+
+      const initEdge = {
+        name: 'portainer.init.edge',
+        url: '/edge',
+        views: {
+          'content@': {
+            component: 'initEdgeView',
           },
         },
       };
@@ -496,6 +503,7 @@ angular
       $stateRegistryProvider.register(gitopsSourceCreate);
       $stateRegistryProvider.register(init);
       $stateRegistryProvider.register(initAdmin);
+      $stateRegistryProvider.register(initEdge);
       $stateRegistryProvider.register(settings);
       $stateRegistryProvider.register(settingsAuthentication);
       $stateRegistryProvider.register(settingsEdgeCompute);
