@@ -1,6 +1,6 @@
 # Stage 1: Frontend (sempre em amd64)
 FROM --platform=linux/amd64 node:22-alpine AS frontend-builder
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@11.19.0
 WORKDIR /app
 COPY . .
 RUN pnpm install --fetch-timeout 300000 --ignore-scripts
