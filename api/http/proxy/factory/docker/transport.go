@@ -22,6 +22,8 @@ import (
 	"github.com/portainer/portainer/api/internal/authorization"
 	"github.com/portainer/portainer/api/logs"
 	"github.com/portainer/portainer/api/slicesx"
+	"github.com/portainer/portainer/pkg/fips"
+	httprequest "github.com/portainer/portainer/pkg/libhttp/request"
 	"github.com/portainer/portainer/pkg/libhttp/ssrf"
 
 	"github.com/docker/docker/api/types/network"
@@ -30,8 +32,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/encoding/json"
 )
-
-var apiVersionRe = regexp.MustCompile(`^/v[0-9.]+(/|$)`)
 
 type (
 	// Transport is a custom transport for Docker API reverse proxy. It allows
@@ -136,15 +136,23 @@ func isAdminOnlyRoute(method string, path string) bool {
 // ProxyDockerRequest intercepts a Docker API request and apply logic based
 // on the requested operation.
 func (transport *Transport) ProxyDockerRequest(request *http.Request) (*http.Response, error) {
+	return transport.proxyDockerRequest(request, fips.FIPSMode())
+}
+
+func (transport *Transport) proxyDockerRequest(request *http.Request, fipsMode bool) (*http.Response, error) {
 	// A percent-encoded path separator lets a request dodge the operation authorization.
 	// Docker API paths never need encoded separators, so reject them outright.
-	if ContainsEncodedSeparator(request.URL.EscapedPath()) {
+	if httprequest.ContainsEncodedSeparator(request.URL.EscapedPath()) {
 		return utils.WriteAccessDeniedResponse()
 	}
 
-	unversionedPath := TrimDockerVersion(request.URL.Path)
+	unversionedPath := httprequest.TrimDockerVersion(request.URL.Path)
 
-	if transport.endpoint.Type == portainer.AgentOnDockerEnvironment || transport.endpoint.Type == portainer.EdgeAgentOnDockerEnvironment {
+	// The agent verifies this signature unless it is running in FIPS mode, where it
+	// relies on mTLS instead. Skip sending it to match that behaviour.
+	if (transport.endpoint.Type == portainer.AgentOnDockerEnvironment ||
+		transport.endpoint.Type == portainer.EdgeAgentOnDockerEnvironment) &&
+		!fipsMode {
 		signature, err := transport.signatureService.CreateSignature(portainer.PortainerAgentSignatureMessage)
 		if err != nil {
 			return nil, err
@@ -979,22 +987,4 @@ func (transport *Transport) fetchEndpointSecuritySettings() (*portainer.Endpoint
 	}
 
 	return &endpoint.SecuritySettings, nil
-}
-
-func ContainsEncodedSeparator(escapedPath string) bool {
-	lower := strings.ToLower(escapedPath)
-	return strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c")
-}
-
-func TrimDockerVersion(urlPath string) string {
-	cleanedPath := path.Clean(urlPath)
-
-	if strings.HasPrefix(cleanedPath, "/v2/") ||
-		strings.HasPrefix(cleanedPath, "v2/") ||
-		strings.HasPrefix(cleanedPath, "/v1/") ||
-		strings.HasPrefix(cleanedPath, "v1/") {
-		return cleanedPath
-	}
-
-	return apiVersionRe.ReplaceAllString(cleanedPath, "/")
 }
